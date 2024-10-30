@@ -11,5 +11,6 @@ func init() {
 		var err error
 		DB, err = mysql.NewXorm(cfg.GetString("db.dsn"))
 		logs.PanicErr(err)
+		DB.SetSyncField()
 	}
 }
