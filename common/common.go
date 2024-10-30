@@ -4,7 +4,6 @@ import (
 	"github.com/injoyai/base/maps"
 	"github.com/injoyai/conv/cfg/v2"
 	influx "github.com/injoyai/goutil/database/influxdb"
-	"github.com/injoyai/goutil/database/mysql"
 	"github.com/injoyai/goutil/database/xorms"
 	"github.com/injoyai/goutil/task"
 )
@@ -16,19 +15,11 @@ var (
 	Real = maps.NewSafe() //实时数据,实时策略加载到缓存
 )
 
-func Init() error {
-	var err error
-	DB, err = mysql.NewXorm(cfg.GetString("db.dsn"))
-	if err != nil {
-		return err
-	}
-
+func init() {
 	TSDB = influx.NewHTTPClient(&influx.HTTPOption{
 		Database: cfg.GetString("tsdb.database"),
 		Addr:     cfg.GetString("tsdb.address"),
 		Username: cfg.GetString("tsdb.username"),
 		Password: cfg.GetString("tsdb.password"),
 	})
-
-	return nil
 }
