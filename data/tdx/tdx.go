@@ -73,13 +73,18 @@ func UpdateCode(refresh bool) error {
 	return nil
 }
 
-// GetStockHistoryKlineMinute 历史分时K线
-func GetStockHistoryKlineMinute(Type, code string) error {
+func UpdateHistoryKline() error {
+
+	return nil
+}
+
+// GetStockHistoryKline 历史K线
+func GetStockHistoryKline(Type TypeKline, code string) error {
 	exchange, code, err := GetExchangeCode(code)
 	if err != nil {
 		return err
 	}
-	resp, err := Tdx.GetStockKlineMinuteAll(exchange, code)
+	resp, err := Tdx.GetStockKlineAll(protocol.TypeKline(Type), exchange, code)
 	if err != nil {
 		return err
 	}
@@ -101,7 +106,7 @@ func GetStockHistoryKlineMinute(Type, code string) error {
 			Volume:   v.Volume,
 			Amount:   v.Amount,
 		}
-		if err := common.TSDB.Write("kline_minute", x.Tags(), x.GMap()); err != nil {
+		if err := common.TSDB.Write(Type.TableName(), x.Tags(), x.GMap()); err != nil {
 			return err
 		}
 	}

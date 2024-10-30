@@ -11,8 +11,11 @@ func main() {
 	//加载tdx数据爬取服务
 	logs.PanicErr(tdx.Init())
 
-	//更新代码
-	logs.PanicErr(tdx.UpdateCode(false))
+	////更新代码
+	//logs.PanicErr(tdx.UpdateCode(false))
+
+	//更新分时图
+	logs.PanicErr(tdx.GetStockHistoryKline())
 
 	//每天凌晨进行数据更新
 	common.Corn.SetTask("updateCode", "0 0 0 * * *", func() {
