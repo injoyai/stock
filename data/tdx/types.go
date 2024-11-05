@@ -2,10 +2,14 @@ package tdx
 
 import "github.com/injoyai/tdx/protocol"
 
-type TypeKline protocol.TypeKline
+type TypeKline uint8
+
+func (this TypeKline) Uint8() uint8 {
+	return uint8(this)
+}
 
 func (this TypeKline) TableName() string {
-	switch protocol.TypeKline(this) {
+	switch uint8(this) {
 	case protocol.TypeKlineMinute:
 		return "kline_minute"
 	case protocol.TypeKline5Minute:

@@ -1,13 +1,11 @@
 package tdx
 
 import (
-	"errors"
 	"github.com/injoyai/conv/cfg/v2"
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/common"
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
-	"strings"
 )
 
 var (
@@ -30,12 +28,12 @@ func UpdateCode(refresh bool) error {
 	exchanges := []protocol.Exchange{
 		protocol.ExchangeSH,
 		protocol.ExchangeSZ,
-		protocol.ExchangeBJ,
+		//protocol.ExchangeBJ,
 	}
 
 	for _, exchange := range exchanges {
 
-		resp, err := Tdx.GetStockAll(exchange)
+		resp, err := Tdx.GetCodeAll(exchange)
 		if err != nil {
 			return err
 		}
@@ -80,11 +78,7 @@ func UpdateHistoryKline() error {
 
 // GetStockHistoryKline 历史K线
 func GetStockHistoryKline(Type TypeKline, code string) error {
-	exchange, code, err := GetExchangeCode(code)
-	if err != nil {
-		return err
-	}
-	resp, err := Tdx.GetStockKlineAll(protocol.TypeKline(Type), exchange, code)
+	resp, err := Tdx.GetKlineAll(Type.Uint8(), code)
 	if err != nil {
 		return err
 	}
@@ -92,8 +86,8 @@ func GetStockHistoryKline(Type TypeKline, code string) error {
 	for _, v := range resp.List {
 		year, month, day := v.Time.Date()
 		x := &StockKline{
-			Exchange: exchange.String(),
-			Code:     code,
+			Exchange: code[:2],
+			Code:     code[2:],
 			Year:     year,
 			Month:    int(month),
 			Day:      day,
@@ -112,23 +106,4 @@ func GetStockHistoryKline(Type TypeKline, code string) error {
 	}
 
 	return nil
-}
-
-func GetExchangeCode(code string) (protocol.Exchange, string, error) {
-	if len(code) != 8 {
-		return 0, "", errors.New("代码错误,例sh000001")
-	}
-	code = strings.ToLower(code)
-	var exchange protocol.Exchange
-	switch code[:2] {
-	case "sh":
-		exchange = protocol.ExchangeSH
-	case "sz":
-		exchange = protocol.ExchangeSZ
-	case "bj":
-		exchange = protocol.ExchangeBJ
-	default:
-		return 0, "", errors.New("无效交易所编号,例sh000001")
-	}
-	return exchange, code[2:], nil
 }

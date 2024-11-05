@@ -3,16 +3,18 @@ module github.com/injoyai/stock
 go 1.20
 
 require (
+	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/injoyai/base v1.0.18
 	github.com/injoyai/conv v1.1.10
 	github.com/injoyai/goutil v0.0.0-20241025081340-4c273eb70b01
 	github.com/injoyai/logs v1.0.9
-	github.com/injoyai/tdx v0.0.0-20241030072949-bd82866f0373
+	github.com/injoyai/tdx v0.0.0-20241105005804-5ff96b9d4a26
 
 )
 
 require (
 	github.com/DrmagicE/gmqtt v0.5.0 // indirect
+	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/denisenkom/go-mssqldb v0.10.0 // indirect
@@ -36,6 +38,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
+	github.com/injoyai/io v0.1.8 // indirect
 	github.com/injoyai/ios v0.0.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

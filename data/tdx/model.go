@@ -64,3 +64,8 @@ type StockMinuteTrade struct {
 	Number   int     `json:"number"`                //成交笔数
 	Status   int     `json:"status"`                //成交状态,0是买，1是卖
 }
+
+type Plan struct {
+	ID    int64 `json:"id"`
+	Kline bool
+}
