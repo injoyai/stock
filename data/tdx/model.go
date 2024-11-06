@@ -51,16 +51,18 @@ func (this *StockKline) GMap() map[string]any {
 
 // StockMinuteTrade 分时成交
 type StockMinuteTrade struct {
-	ID       int64   `json:"id"`
+	ID       int64   `json:"id"`                    //主键
 	Exchange string  `json:"exchange" xorm:"index"` //交易所
 	Code     string  `json:"code" xorm:"index"`     //代码
+	Date     string  `json:"date" xorm:"index"`     //日期
 	Year     int     `json:"year"`                  //年
 	Month    int     `json:"month"`                 //月
 	Day      int     `json:"day"`                   //日
 	Hour     int     `json:"hour"`                  //时
 	Minute   int     `json:"minute"`                //分
+	Second   int     `json:"second"`                //秒
 	Price    float64 `json:"price"`                 //价格
-	Volume   int64   `json:"volume"`                //成交量
+	Volume   int     `json:"volume"`                //成交量
 	Number   int     `json:"number"`                //成交笔数
 	Status   int     `json:"status"`                //成交状态,0是买，1是卖
 }
