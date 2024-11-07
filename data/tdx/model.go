@@ -10,8 +10,10 @@ type StockCode struct {
 }
 
 type StockKline struct {
+	ID       int64   `json:"id"`                    //主键
 	Exchange string  `json:"exchange" xorm:"index"` //交易所
 	Code     string  `json:"code" xorm:"index"`     //代码
+	Unix     int64   `json:"unix"`                  //时间戳
 	Year     int     `json:"year"`                  //年
 	Month    int     `json:"month"`                 //月
 	Day      int     `json:"day"`                   //日
@@ -20,9 +22,10 @@ type StockKline struct {
 	Open     float64 `json:"open"`                  //开盘价
 	High     float64 `json:"high"`                  //最高价
 	Low      float64 `json:"low"`                   //最低价
-	Latest   float64 `json:"close"`                 //最新价,对应历史收盘价
+	Close    float64 `json:"close"`                 //最新价,对应历史收盘价
 	Volume   float64 `json:"volume"`                //成交量
 	Amount   float64 `json:"amount"`                //成交额
+	InDate   int64   `json:"inDate" xorm:"created"` //创建时间
 }
 
 func (this *StockKline) Tags() map[string]string {
@@ -43,7 +46,7 @@ func (this *StockKline) GMap() map[string]any {
 		"open":     this.Open,
 		"high":     this.High,
 		"low":      this.Low,
-		"close":    this.Latest,
+		"close":    this.Close,
 		"volume":   this.Volume,
 		"amount":   this.Amount,
 	}

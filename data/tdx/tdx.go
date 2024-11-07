@@ -96,7 +96,7 @@ func GetStockHistoryKline(Type TypeKline, code string) error {
 			Open:     v.Open.Float64(),
 			High:     v.High.Float64(),
 			Low:      v.Low.Float64(),
-			Latest:   v.Close.Float64(),
+			Close:    v.Close.Float64(),
 			Volume:   v.Volume,
 			Amount:   v.Amount,
 		}
