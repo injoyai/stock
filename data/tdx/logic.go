@@ -25,6 +25,72 @@ type Client struct {
 	*tdx.Client
 }
 
+func (this *Client) KlineMinute(code string) ([]string, error) {
+
+	//1. 连接数据库
+	filename := fmt.Sprintf("./database/kline/%s_minute.db", code)
+	db, err := sqlite.NewXorm(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	if err := db.Sync(new(StockKline)); err != nil {
+		return nil, err
+	}
+
+	//2. 查询数据库最后的数据
+	last := new(StockKline)
+	has, err := db.Desc("ID").Get(last)
+	if err != nil {
+		return nil, err
+	}
+	_ = has
+
+	//2. 查询最后的数据时间
+	resp, err := this.Client.GetKlineMinuteAll(code)
+	if err != nil {
+		return nil, err
+	}
+
+	list := []*StockKline(nil)
+	dates := []string(nil)
+	for _, v := range resp.List {
+		dates = append(dates, v.Time.Format("20060102"))
+
+		if last.Unix < v.Time.Unix() {
+			list = append(list, &StockKline{
+				Exchange: code[:2],
+				Code:     code[2:],
+				Unix:     v.Time.Unix(),
+				Year:     v.Time.Year(),
+				Month:    int(v.Time.Month()),
+				Day:      v.Time.Day(),
+				Hour:     v.Time.Hour(),
+				Minute:   v.Time.Minute(),
+				Open:     v.Open.Float64(),
+				High:     v.High.Float64(),
+				Low:      v.Low.Float64(),
+				Close:    v.Close.Float64(),
+				Volume:   v.Volume,
+				Amount:   v.Amount,
+			})
+		}
+
+	}
+
+	err = db.SessionFunc(func(session *xorm.Session) error {
+		for _, v := range list {
+			if _, err := session.Insert(v); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return dates, err
+}
+
 /*
 KlineDay 日k线
 */
