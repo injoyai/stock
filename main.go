@@ -13,6 +13,7 @@ import (
 
 func main() {
 
+	//判断是否是节假日
 	date := time.Now().Format("20060102")
 	isHoliday, err := data.Holiday.Is(date)
 	logs.PrintErr(err)

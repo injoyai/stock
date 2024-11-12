@@ -1,9 +1,11 @@
-package strategy
+package demo
+
+import "github.com/injoyai/stock/strategy"
 
 func init() {
 	riseLimit := 0.05 //上涨阈值
 	noticed := false
-	All.Register(func(data *Data) {
+	strategy.All.Register(func(data *strategy.Data) {
 		if data.Code != "sz000001" {
 			return
 		}
