@@ -23,8 +23,8 @@ type StockKline struct {
 	High     float64 `json:"high"`                  //最高价
 	Low      float64 `json:"low"`                   //最低价
 	Close    float64 `json:"close"`                 //最新价,对应历史收盘价
-	Volume   float64 `json:"volume"`                //成交量
-	Amount   float64 `json:"amount"`                //成交额
+	Volume   int64   `json:"volume"`                //成交量
+	Amount   int64   `json:"amount"`                //成交额
 	InDate   int64   `json:"inDate" xorm:"created"` //创建时间
 }
 
