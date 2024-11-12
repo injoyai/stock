@@ -7,6 +7,7 @@ import (
 	"github.com/injoyai/stock/common"
 	"github.com/injoyai/stock/data"
 	"github.com/injoyai/stock/data/tdx"
+	"github.com/injoyai/stock/strategy"
 	"time"
 )
 
@@ -47,6 +48,8 @@ func main() {
 
 	})
 
+	//关注的股票,或者全部股票
+	codeReal := "sz000001"
 	//今日分时k线图
 	todayKline := []*tdx.StockKline(nil)
 	//今日分时成交
@@ -54,10 +57,21 @@ func main() {
 	//每秒更新实时数据,并实时计算
 	common.Corn.SetTask("updateReal", "* * * * * *", func() {
 
-		_ = todayKline
+		//更新实时K线数据
+		todayKline, err = c.GetKlineReal(codeReal, todayKline)
+		logs.PrintErr(err)
+
+		//更新实时分时成交
 		_ = todayTrace
 
 		//实时计算日策略
+		strategy.All.Do(&strategy.Data{
+			Code:         codeReal,
+			TodayKline:   todayKline,
+			TodayTrace:   todayTrace,
+			HistoryKline: nil,
+			HistoryTrace: nil,
+		})
 
 	})
 

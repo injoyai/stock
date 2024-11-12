@@ -1,5 +1,7 @@
 package tdx
 
+import "github.com/injoyai/tdx/protocol"
+
 type StockCode struct {
 	ID       int64  `json:"id"`                      //主键
 	Name     string `json:"name"`                    //名称
@@ -7,6 +9,25 @@ type StockCode struct {
 	Exchange string `json:"exchange" xorm:"index"`   //交易所
 	EditDate int64  `json:"editDate" xorm:"updated"` //修改时间
 	InDate   int64  `json:"inDate" xorm:"created"`   //创建时间
+}
+
+func NewStockKline(code string, kline *protocol.Kline) *StockKline {
+	return &StockKline{
+		Exchange: code[:2],
+		Code:     code[2:],
+		Unix:     kline.Time.Unix(),
+		Year:     kline.Time.Year(),
+		Month:    int(kline.Time.Month()),
+		Day:      kline.Time.Day(),
+		Hour:     kline.Time.Hour(),
+		Minute:   kline.Time.Minute(),
+		Open:     kline.Open.Float64(),
+		High:     kline.High.Float64(),
+		Low:      kline.Low.Float64(),
+		Close:    kline.Close.Float64(),
+		Volume:   int64(kline.Volume),
+		Amount:   int64(kline.Amount),
+	}
 }
 
 type StockKline struct {
@@ -28,30 +49,6 @@ type StockKline struct {
 	InDate   int64   `json:"inDate" xorm:"created"` //创建时间
 }
 
-func (this *StockKline) Tags() map[string]string {
-	return map[string]string{
-		"exchange": this.Exchange,
-	}
-}
-
-func (this *StockKline) GMap() map[string]any {
-	return map[string]any{
-		"exchange": this.Exchange,
-		"code":     this.Code,
-		"year":     this.Year,
-		"month":    this.Month,
-		"day":      this.Day,
-		"hour":     this.Hour,
-		"minute":   this.Minute,
-		"open":     this.Open,
-		"high":     this.High,
-		"low":      this.Low,
-		"close":    this.Close,
-		"volume":   this.Volume,
-		"amount":   this.Amount,
-	}
-}
-
 // StockMinuteTrade 分时成交
 type StockMinuteTrade struct {
 	ID       int64   `json:"id"`                    //主键
@@ -68,9 +65,4 @@ type StockMinuteTrade struct {
 	Volume   int     `json:"volume"`                //成交量
 	Number   int     `json:"number"`                //成交笔数
 	Status   int     `json:"status"`                //成交状态,0是买，1是卖
-}
-
-type Plan struct {
-	ID    int64 `json:"id"`
-	Kline bool
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/injoyai/conv"
 	"github.com/injoyai/goutil/database/sqlite"
+	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
@@ -95,6 +96,42 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 		}
 		return nil
 	})
+
+}
+
+func (this *Client) GetKlineReal(code string, cache []*StockKline) ([]*StockKline, error) {
+
+	last := &StockKline{Unix: times.IntegerDay(time.Now()).Unix()}
+	if len(cache) > 0 {
+		last = cache[len(cache)-1]   //获取最后的数据,用于截止获取数据
+		cache = cache[len(cache)-1:] //删除最后一分钟的数据,用新数据更新
+	}
+
+	list := []*StockKline(nil)
+	for {
+		resp, err := this.Client.GetKlineMinute(code, 0, 800)
+		if err != nil {
+			return cache, err
+		}
+
+		done := false
+		for _, v := range resp.List {
+			//获取今天有效的分时图
+			if last.Unix > v.Time.Unix() {
+				done = true
+				break
+			}
+			list = append(list, NewStockKline(code, v))
+		}
+
+		if done {
+			break
+		}
+
+	}
+
+	cache = append(cache, list...)
+	return cache, nil
 
 }
 
