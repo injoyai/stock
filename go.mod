@@ -10,10 +10,10 @@ require (
 	github.com/injoyai/ios v0.0.4
 	github.com/injoyai/logs v1.0.9
 	github.com/injoyai/notice v0.0.1
-	github.com/injoyai/tdx v0.0.0-20241105005804-5ff96b9d4a26
 	xorm.io/xorm v1.3.2
-
+	github.com/injoyai/tdx v0.0.0-20241111014134-3b109d8f3ab5
 )
+
 
 require (
 	github.com/DrmagicE/gmqtt v0.5.0 // indirect

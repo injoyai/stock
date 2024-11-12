@@ -30,7 +30,7 @@ func main() {
 	for _, code := range []string{"sz000001"} {
 		//3. 进行按股票进行每日更新,并尝试重试
 		g.Retry(func() error {
-			_, err = c.KlineDay(code)
+			_, err = c.KlineMinute(code)
 			logs.PrintErr(err)
 			return err
 		}, 3)
