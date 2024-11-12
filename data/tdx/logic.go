@@ -2,7 +2,6 @@ package tdx
 
 import (
 	"fmt"
-	"github.com/injoyai/conv"
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
@@ -210,22 +209,7 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 		ls := []*StockKline(nil)
 		for _, v := range resp.List {
 			if lastTime.Unix() < v.Time.Unix() {
-				ls = append(ls, &StockKline{
-					Exchange: code[:2],
-					Code:     code[2:],
-					Unix:     v.Time.Unix(),
-					Year:     v.Time.Year(),
-					Month:    int(v.Time.Month()),
-					Day:      v.Time.Day(),
-					Hour:     v.Time.Hour(),
-					Minute:   v.Time.Minute(),
-					Open:     v.Open.Float64(),
-					High:     v.High.Float64(),
-					Low:      v.Low.Float64(),
-					Close:    v.Close.Float64(),
-					Volume:   int64(v.Volume),
-					Amount:   int64(v.Amount),
-				})
+				ls = append(ls, NewStockKline(code, v))
 			} else {
 				done = true
 			}
@@ -285,22 +269,7 @@ func (this *Client) KlineDay2(code string) ([]string, error) {
 		dates = append(dates, v.Time.Format("20060102"))
 
 		if last.Unix < v.Time.Unix() {
-			list = append(list, &StockKline{
-				Exchange: code[:2],
-				Code:     code[2:],
-				Unix:     v.Time.Unix(),
-				Year:     v.Time.Year(),
-				Month:    int(v.Time.Month()),
-				Day:      v.Time.Day(),
-				Hour:     v.Time.Hour(),
-				Minute:   v.Time.Minute(),
-				Open:     v.Open.Float64(),
-				High:     v.High.Float64(),
-				Low:      v.Low.Float64(),
-				Close:    v.Close.Float64(),
-				Volume:   int64(v.Volume),
-				Amount:   int64(v.Amount),
-			})
+			list = append(list, NewStockKline(code, v))
 		}
 
 	}
@@ -351,21 +320,7 @@ func (this *Client) Trade(code string, dates []string) error {
 			}
 			list := []*StockMinuteTrade(nil)
 			for _, v := range resp.List {
-				list = append(list, &StockMinuteTrade{
-					Exchange: code[:2],
-					Code:     code[2:],
-					Date:     date,
-					Year:     conv.Int(date[:4]),
-					Month:    conv.Int(date[4:6]),
-					Day:      conv.Int(date[6:8]),
-					Hour:     conv.Int(v.Time[:2]),
-					Minute:   conv.Int(v.Time[3:5]),
-					Second:   0,
-					Price:    v.Price.Float64(),
-					Volume:   v.Volume,
-					Number:   0,
-					Status:   v.Status,
-				})
+				list = append(list, NewStockMinuteTrade(code, date, v))
 			}
 		}
 

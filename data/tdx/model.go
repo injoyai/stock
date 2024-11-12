@@ -1,6 +1,9 @@
 package tdx
 
-import "github.com/injoyai/tdx/protocol"
+import (
+	"github.com/injoyai/conv"
+	"github.com/injoyai/tdx/protocol"
+)
 
 type StockCode struct {
 	ID       int64  `json:"id"`                      //主键
@@ -47,6 +50,24 @@ type StockKline struct {
 	Volume   int64   `json:"volume"`                //成交量
 	Amount   int64   `json:"amount"`                //成交额
 	InDate   int64   `json:"inDate" xorm:"created"` //创建时间
+}
+
+func NewStockMinuteTrade(code, date string, trace *protocol.HistoryMinuteTrade) *StockMinuteTrade {
+	return &StockMinuteTrade{
+		Exchange: code[:2],
+		Code:     code[2:],
+		Date:     date,
+		Year:     conv.Int(date[:4]),
+		Month:    conv.Int(date[4:6]),
+		Day:      conv.Int(date[6:8]),
+		Hour:     conv.Int(trace.Time[:2]),
+		Minute:   conv.Int(trace.Time[3:5]),
+		Second:   0,
+		Price:    trace.Price.Float64(),
+		Volume:   trace.Volume,
+		Number:   0,
+		Status:   trace.Status,
+	}
 }
 
 // StockMinuteTrade 分时成交
