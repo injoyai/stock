@@ -65,8 +65,8 @@ func (this *Client) GetVar(key string) *conv.Var {
 	return data.GetVar(key)
 }
 
-func (this *Client) UpdateTime() error {
-	_, err := this.updateDB.Update(&Update{Code: time.Now().Unix()})
+func (this *Client) UpdateTime(key string) error {
+	_, err := this.updateDB.Table(new(Update)).Update(map[string]int64{key: time.Now().Unix()})
 	return err
 }
 
@@ -157,7 +157,7 @@ func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 	}
 
 	//更新获取代码的时间点
-	logs.PrintErr(this.UpdateTime())
+	logs.PrintErr(this.UpdateTime("Code"))
 
 	return list, nil
 
