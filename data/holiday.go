@@ -13,16 +13,29 @@ import (
 	"time"
 )
 
-var Holiday = &holiday{m: maps.NewSafe()}
+var _holiday = &holiday{m: maps.NewSafe()}
+
+func TodayIsHoliday() (bool, error) {
+	return _holiday.TodayIs()
+}
+
+func IsHoliday(date string, countries ...string) (bool, error) {
+	return _holiday.Is(date, countries...)
+}
 
 func init() {
-	err := Holiday.init()
+	err := _holiday.init()
 	logs.PrintErr(err)
 }
 
 type holiday struct {
 	year int
 	m    *maps.Safe
+}
+
+func (this *holiday) TodayIs() (bool, error) {
+	date := time.Now().Format("20060102")
+	return this.Is(date)
 }
 
 func (this *holiday) Is(date string, countries ...string) (bool, error) {

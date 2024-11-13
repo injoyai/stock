@@ -9,11 +9,11 @@ require (
 	github.com/injoyai/goutil v0.0.0-20241025081340-4c273eb70b01
 	github.com/injoyai/ios v0.0.4
 	github.com/injoyai/logs v1.0.9
+	github.com/injoyai/lorca v0.0.0-20230816093842-66a8b4247238
 	github.com/injoyai/notice v0.0.1
-	xorm.io/xorm v1.3.2
 	github.com/injoyai/tdx v0.0.0-20241111014134-3b109d8f3ab5
+	xorm.io/xorm v1.3.2
 )
-
 
 require (
 	github.com/DrmagicE/gmqtt v0.5.0 // indirect
