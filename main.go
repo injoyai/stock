@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/injoyai/goutil/g"
+	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/api"
 	"github.com/injoyai/stock/common"
@@ -9,6 +10,7 @@ import (
 	"github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/stock/gui"
 	"github.com/injoyai/stock/strategy"
+	"time"
 )
 
 func main() {
@@ -33,43 +35,41 @@ func main() {
 
 	}
 
-	codes := []string(nil)
-	if false {
-		//启动的时候获取全部股票
-		codes, err = c.Code(isHoliday)
+	//启动的时候获取全部股票
+	codes, err := c.Code(isHoliday)
+	logs.PrintErr(err)
+	logs.Info("更新全部股票结束...")
+
+	//每天早上8点更新股票代码,或者是启动的时候
+	common.Corn.SetTask("updateCode", "0 30 7 * * *", func() {
+		//1. 判断是否是节假日
+		if isHoliday {
+			return
+		}
+		//2. 更新代码信息
+		_, err := c.Code(isHoliday)
 		logs.PrintErr(err)
-		logs.Info("更新全部股票结束...")
-	}
+	})
 
-	if false {
-		//每天早上8点更新股票代码,或者是启动的时候
-		common.Corn.SetTask("updateCode", "0 30 7 * * *", func() {
-			codes, err = c.Code(isHoliday)
-			logs.PrintErr(err)
-		})
-	}
+	//每天下午16点进行数据更新
+	common.Corn.SetTask("update", "0 0 16 * * *", func() {
 
-	if false {
-		//每天下午16点进行数据更新
-		common.Corn.SetTask("update", "0 0 16 * * *", func() {
+		//1. 判断是否是节假日
+		if isHoliday {
+			return
+		}
 
-			//1. 判断是否是节假日
-			if isHoliday {
-				return
-			}
+		//2. 遍历全部股票
+		for _, code := range codes {
+			//3. 进行按股票进行每日更新,并尝试重试
+			g.Retry(func() error {
+				err = c.KlineMinute(code.Code)
+				logs.PrintErr(err)
+				return err
+			}, 3)
+		}
 
-			//2. 遍历全部股票
-			for _, code := range codes {
-				//3. 进行按股票进行每日更新,并尝试重试
-				g.Retry(func() error {
-					err = c.KlineMinute(code)
-					logs.PrintErr(err)
-					return err
-				}, 3)
-			}
-
-		})
-	}
+	})
 
 	if false {
 		//关注的股票,或者全部股票
@@ -79,22 +79,33 @@ func main() {
 		//今日分时成交
 		todayTrace := []*tdx.MinuteTrade(nil)
 		//每30秒更新分时数据,并实时计算
-		common.Corn.SetTask("updateReal", "*/2 * * * * *", func() {
+		common.Corn.SetTask("updateReal", "* * 9-12,13-15 * * *", func() {
+
+			//1. 判断是否是节假日
+			if isHoliday {
+				return
+			}
+
+			//2. 判断是否在交易时间内
+			now := time.Now()
+			start1 := time.Hour*9 + time.Minute*30
+			end1 := time.Hour*11 + time.Minute*30
+			start2 := time.Hour * 13
+			end2 := time.Hour * 15
+			sub := now.Sub(times.IntegerDay(now))
+			if sub < start1 || sub > end2 || (sub > end1 && sub < start2) {
+				return
+			}
 
 			//更新实时K线数据
 			todayKline, err = c.KlineReal(codeReal, todayKline)
 			logs.PrintErr(err)
 
-			//更新实时分时成交
-			_ = todayTrace
-
 			//实时计算日策略
 			strategy.All.Do(&strategy.Data{
-				Code:         codeReal,
-				TodayKline:   todayKline,
-				TodayTrace:   todayTrace,
-				HistoryKline: nil,
-				HistoryTrace: nil,
+				Code:       codeReal,
+				TodayKline: todayKline,
+				TodayTrace: todayTrace,
 			})
 
 		})

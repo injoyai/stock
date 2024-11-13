@@ -56,6 +56,20 @@ type Code struct {
 	InDate   int64  `json:"inDate" xorm:"created"`   //创建时间
 }
 
+//type Codes []*Code
+//
+//func (this Codes) Stocks() []string {
+//	ls := []string(nil)
+//	for _, v := range this {
+//		if v.Stock {
+//			ls = append(ls, v.Code)
+//		}
+//	}
+//	return ls
+//}
+
+/**/
+
 // Update 记录更新时间,避免重复更新
 type Update struct {
 	ID            int64 `json:"id"`                    //主键
@@ -65,11 +79,41 @@ type Update struct {
 	Kline15Minute int64 `json:"kline15Minute"`         //15分钟K线
 	Kline30Minute int64 `json:"kline30Minute"`         //30分钟K线
 	KlineHour     int64 `json:"klineHour"`             //小时K线
+	KlineDay      int64 `json:"klineDay"`              //日K线
 	KlineWeek     int64 `json:"klineWeek"`             //周K线
 	KlineMonth    int64 `json:"klineMonth"`            //月K线
 	KlineQuarter  int64 `json:"klineQuarter"`          //季K线
 	KlineYear     int64 `json:"klineYear"`             //年K线
 	InDate        int64 `json:"inDate" xorm:"created"` //创建时间
+}
+
+func (this *Update) GetVar(key string) *conv.Var {
+	switch key {
+	case "code":
+		return conv.New(this.Code)
+	case "klineMinute":
+		return conv.New(this.KlineMinute)
+	case "kline5Minute":
+		return conv.New(this.Kline5Minute)
+	case "kline15Minute":
+		return conv.New(this.Kline15Minute)
+	case "kline30Minute":
+		return conv.New(this.Kline15Minute)
+	case "klineHour":
+		return conv.New(this.KlineHour)
+	case "klineDay":
+		return conv.New(this.KlineDay)
+	case "klineWeek":
+		return conv.New(this.KlineWeek)
+	case "klineMonth":
+		return conv.New(this.KlineMonth)
+	case "klineQuarter":
+		return conv.New(this.KlineQuarter)
+	case "klineYear":
+		return conv.New(this.KlineYear)
+	default:
+		return conv.Nil()
+	}
 }
 
 /**/

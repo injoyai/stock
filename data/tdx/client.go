@@ -2,9 +2,12 @@ package tdx
 
 import (
 	"fmt"
+	"github.com/injoyai/conv"
 	"github.com/injoyai/goutil/database/sqlite"
+	"github.com/injoyai/goutil/database/xorms"
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
+	"github.com/injoyai/logs"
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
 	"time"
@@ -12,7 +15,28 @@ import (
 )
 
 func Dial(addr string, op ...client.Option) (*Client, error) {
-	c, err := tdx.Dial(addr, func(c *client.Client) {
+
+	cli := &Client{}
+
+	db, err := cli.OpenDB("./database/update.db", new(Update))
+	if err != nil {
+		return nil, err
+	}
+	co, err := db.Count(new(Update))
+	if err != nil {
+		return nil, err
+	}
+	if co == 0 {
+		_, err = db.Insert(new(Update))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cli.updateDB = db
+	cli.Extend = conv.NewExtend(cli)
+
+	cli.Client, err = tdx.Dial(addr, func(c *client.Client) {
 		c.Logger.Debug()
 		c.SetRedial(true)
 		c.SetOption(op...)
@@ -20,14 +44,45 @@ func Dial(addr string, op ...client.Option) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{c}, nil
+
+	return cli, nil
 }
 
 type Client struct {
-	Client *tdx.Client
+	Client   *tdx.Client
+	updateDB *xorms.Engine
+	conv.Extend
 }
 
-func (this *Client) Code(byDatabase bool) ([]string, error) {
+func (this *Client) GetVar(key string) *conv.Var {
+	if this.updateDB == nil {
+		return conv.Nil()
+	}
+	data := new(Update)
+	if _, err := this.updateDB.Get(data); err != nil {
+		return conv.Nil()
+	}
+	return data.GetVar(key)
+}
+
+func (this *Client) UpdateTime() error {
+	_, err := this.updateDB.Update(&Update{Code: time.Now().Unix()})
+	return err
+}
+
+func (this *Client) OpenDB(filename string, entity any) (*xorms.Engine, error) {
+	db, err := sqlite.NewXorm(filename)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Sync(entity); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+// Code 更新股票并返回结果
+func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 
 	//1. 打开数据库
 	db, err := sqlite.NewXorm("./database/code.db")
@@ -45,16 +100,20 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 	if err := db.Find(&list); err != nil {
 		return nil, err
 	}
-	codes := make([]string, len(list), len(list)+10)
-	mCode := make(map[string]string, len(list))
-	for i, v := range list {
-		mCode[v.Code] = v.Name
-		codes[i] = v.Code
-	}
 
 	//如果是从缓存读取,则返回结果
 	if byDatabase {
-		return codes, nil
+		return list, nil
+	}
+
+	//判断今天是否更新过
+	if times.IntegerDay(time.Now()).Unix() < this.GetInt64("code") {
+		return list, nil
+	}
+
+	mCode := make(map[string]*Code, len(list))
+	for _, v := range list {
+		mCode[v.Code] = v
 	}
 
 	//3. 从服务器获取所有股票代码
@@ -67,18 +126,20 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 		}
 		for _, v := range resp.List {
 			if _, ok := mCode[v.Code]; ok {
-				if mCode[v.Code] != v.Name {
+				if mCode[v.Code].Name != v.Name {
+					mCode[v.Code].Name = v.Name
 					update = append(update, NewCode(exchange, v))
 				}
 			} else {
-				insert = append(insert, NewCode(exchange, v))
-				codes = append(codes, v.Code)
+				code := NewCode(exchange, v)
+				insert = append(insert, code)
+				list = append(list, code)
 			}
 		}
 	}
 
 	//4. 插入或者更新数据库
-	return codes, db.SessionFunc(func(session *xorm.Session) error {
+	err = db.SessionFunc(func(session *xorm.Session) error {
 		for _, v := range insert {
 			if _, err := session.Insert(v); err != nil {
 				return err
@@ -91,6 +152,14 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	//更新获取代码的时间点
+	logs.PrintErr(this.UpdateTime())
+
+	return list, nil
 
 }
 

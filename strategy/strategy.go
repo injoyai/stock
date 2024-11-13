@@ -21,9 +21,17 @@ func (this *Manage) Do(data *Data) {
 }
 
 type Data struct {
-	Code         string             //股票代码
-	TodayKline   []*tdx.Kline       //今日K线图
-	TodayTrace   []*tdx.MinuteTrade //今天分时成交
-	HistoryKline []any              //历史k线图
-	HistoryTrace []any              //历史分时成交
+	Code                 string             //股票代码
+	TodayKline           tdx.Klines         //今日K线图
+	TodayTrace           []*tdx.MinuteTrade //今天分时成交
+	HistoryKlineMinute   tdx.Klines         //历史k线图
+	HistoryKline5Minute  tdx.Klines         //历史k线图
+	HistoryKline15Minute tdx.Klines         //历史k线图
+	HistoryKline30Minute tdx.Klines         //历史k线图
+	HistoryKlineHour     tdx.Klines         //历史k线图
+	HistoryKlineDay      tdx.Klines         //历史k线图
+	HistoryKlineMonth    tdx.Klines         //历史k线图
+	HistoryKlineQuarter  tdx.Klines         //历史k线图
+	HistoryKlineYear     tdx.Klines         //历史k线图
+	HistoryTrace         []any              //历史分时成交
 }
