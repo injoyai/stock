@@ -36,8 +36,12 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 	}
 	defer db.Close()
 
+	if err := db.Sync(new(Code)); err != nil {
+		return nil, err
+	}
+
 	//2. 查询数据库所有股票
-	list := []*StockCode(nil)
+	list := []*Code(nil)
 	if err := db.Find(&list); err != nil {
 		return nil, err
 	}
@@ -54,8 +58,8 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 	}
 
 	//3. 从服务器获取所有股票代码
-	insert := []*StockCode(nil)
-	update := []*StockCode(nil)
+	insert := []*Code(nil)
+	update := []*Code(nil)
 	for _, exchange := range []protocol.Exchange{protocol.ExchangeSH, protocol.ExchangeSZ} {
 		resp, err := this.Client.GetCodeAll(exchange)
 		if err != nil {
@@ -64,19 +68,19 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 		for _, v := range resp.List {
 			if _, ok := mCode[v.Code]; ok {
 				if mCode[v.Code] != v.Name {
-					update = append(update, &StockCode{
+					update = append(update, &Code{
 						Name:     v.Name,
 						Code:     v.Code,
 						Exchange: v.Code[:2],
 					})
-				} else {
-					insert = append(insert, &StockCode{
-						Name:     v.Name,
-						Code:     v.Code,
-						Exchange: v.Code[:2],
-					})
-					codes = append(codes, v.Code)
 				}
+			} else {
+				insert = append(insert, &Code{
+					Name:     v.Name,
+					Code:     v.Code,
+					Exchange: v.Code[:2],
+				})
+				codes = append(codes, v.Code)
 			}
 		}
 	}
@@ -98,15 +102,15 @@ func (this *Client) Code(byDatabase bool) ([]string, error) {
 
 }
 
-func (this *Client) GetKlineReal(code string, cache []*StockKline) ([]*StockKline, error) {
+func (this *Client) GetKlineReal(code string, cache []*Kline) ([]*Kline, error) {
 
-	last := &StockKline{Unix: times.IntegerDay(time.Now()).Unix()}
+	last := &Kline{Unix: times.IntegerDay(time.Now()).Unix()}
 	if len(cache) > 0 {
 		last = cache[len(cache)-1]   //获取最后的数据,用于截止获取数据
 		cache = cache[len(cache)-1:] //删除最后一分钟的数据,用新数据更新
 	}
 
-	list := []*StockKline(nil)
+	list := []*Kline(nil)
 	for {
 		resp, err := this.Client.GetKlineMinute(code, 0, 800)
 		if err != nil {
@@ -120,7 +124,7 @@ func (this *Client) GetKlineReal(code string, cache []*StockKline) ([]*StockKlin
 				done = true
 				break
 			}
-			list = append(list, NewStockKline(code, v))
+			list = append(list, NewKline(code, v))
 		}
 
 		if done {
@@ -184,19 +188,19 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 	}
 	defer db.Close()
 
-	if err := db.Sync(new(StockKline)); err != nil {
+	if err := db.Sync(new(Kline)); err != nil {
 		return err
 	}
 
 	//2. 查询数据库最后的数据
-	last := new(StockKline)
+	last := new(Kline)
 	_, err = db.Desc("ID").Get(last)
 	if err != nil {
 		return err
 	}
 
 	lastTime := time.Unix(last.Unix, 0)
-	list := []*StockKline(nil)
+	list := []*Kline(nil)
 
 	size := uint16(800)
 	for start := uint16(0); ; start += size {
@@ -206,10 +210,10 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 		}
 
 		done := false
-		ls := []*StockKline(nil)
+		ls := []*Kline(nil)
 		for _, v := range resp.List {
 			if lastTime.Unix() < v.Time.Unix() {
-				ls = append(ls, NewStockKline(code, v))
+				ls = append(ls, NewKline(code, v))
 			} else {
 				done = true
 			}
@@ -245,12 +249,12 @@ func (this *Client) KlineDay2(code string) ([]string, error) {
 	}
 	defer db.Close()
 
-	if err := db.Sync(new(StockKline)); err != nil {
+	if err := db.Sync(new(Kline)); err != nil {
 		return nil, err
 	}
 
 	//2. 查询数据库最后的数据
-	last := new(StockKline)
+	last := new(Kline)
 	has, err := db.Desc("ID").Get(last)
 	if err != nil {
 		return nil, err
@@ -263,13 +267,13 @@ func (this *Client) KlineDay2(code string) ([]string, error) {
 		return nil, err
 	}
 
-	list := []*StockKline(nil)
+	list := []*Kline(nil)
 	dates := []string(nil)
 	for _, v := range resp.List {
 		dates = append(dates, v.Time.Format("20060102"))
 
 		if last.Unix < v.Time.Unix() {
-			list = append(list, NewStockKline(code, v))
+			list = append(list, NewKline(code, v))
 		}
 
 	}
@@ -303,7 +307,7 @@ func (this *Client) Trade(code string, dates []string) error {
 	defer db.Close()
 
 	//2. 查询最后的数据时间
-	last := new(StockMinuteTrade)
+	last := new(MinuteTrade)
 	_, err = db.Desc("ID").Get(last)
 	if err != nil {
 		return err
@@ -318,9 +322,9 @@ func (this *Client) Trade(code string, dates []string) error {
 			if err != nil {
 				return err
 			}
-			list := []*StockMinuteTrade(nil)
+			list := []*MinuteTrade(nil)
 			for _, v := range resp.List {
-				list = append(list, NewStockMinuteTrade(code, date, v))
+				list = append(list, NewMinuteTrade(code, date, v))
 			}
 		}
 

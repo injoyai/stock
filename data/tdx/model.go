@@ -5,7 +5,7 @@ import (
 	"github.com/injoyai/tdx/protocol"
 )
 
-type StockCode struct {
+type Code struct {
 	ID       int64  `json:"id"`                      //主键
 	Name     string `json:"name"`                    //名称
 	Code     string `json:"code" xorm:"index"`       //代码
@@ -14,8 +14,8 @@ type StockCode struct {
 	InDate   int64  `json:"inDate" xorm:"created"`   //创建时间
 }
 
-func NewStockKline(code string, kline *protocol.Kline) *StockKline {
-	return &StockKline{
+func NewKline(code string, kline *protocol.Kline) *Kline {
+	return &Kline{
 		Exchange: code[:2],
 		Code:     code[2:],
 		Unix:     kline.Time.Unix(),
@@ -33,7 +33,7 @@ func NewStockKline(code string, kline *protocol.Kline) *StockKline {
 	}
 }
 
-type StockKline struct {
+type Kline struct {
 	ID       int64   `json:"id"`                    //主键
 	Exchange string  `json:"exchange" xorm:"index"` //交易所
 	Code     string  `json:"code" xorm:"index"`     //代码
@@ -52,8 +52,8 @@ type StockKline struct {
 	InDate   int64   `json:"inDate" xorm:"created"` //创建时间
 }
 
-func NewStockMinuteTrade(code, date string, trace *protocol.HistoryMinuteTrade) *StockMinuteTrade {
-	return &StockMinuteTrade{
+func NewMinuteTrade(code, date string, trace *protocol.HistoryMinuteTrade) *MinuteTrade {
+	return &MinuteTrade{
 		Exchange: code[:2],
 		Code:     code[2:],
 		Date:     date,
@@ -70,8 +70,8 @@ func NewStockMinuteTrade(code, date string, trace *protocol.HistoryMinuteTrade) 
 	}
 }
 
-// StockMinuteTrade 分时成交
-type StockMinuteTrade struct {
+// MinuteTrade 分时成交
+type MinuteTrade struct {
 	ID       int64   `json:"id"`                    //主键
 	Exchange string  `json:"exchange" xorm:"index"` //交易所
 	Code     string  `json:"code" xorm:"index"`     //代码

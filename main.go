@@ -25,9 +25,9 @@ func main() {
 	//启动的时候获取全部股票
 	codes, err := c.Code(isHoliday)
 	logs.PrintErr(err)
-	logs.Info("更新全部股票成功...")
+	logs.Info("更新全部股票结束...")
 
-	if true {
+	if false {
 		//每天早上8点更新股票代码,或者是启动的时候
 		common.Corn.SetTask("updateCode", "0 30 7 * * *", func() {
 			codes, err = c.Code(isHoliday)
@@ -35,7 +35,7 @@ func main() {
 		})
 	}
 
-	if true {
+	if false {
 		//每天下午16点进行数据更新
 		common.Corn.SetTask("update", "0 0 16 * * *", func() {
 
@@ -57,13 +57,13 @@ func main() {
 		})
 	}
 
-	if true {
+	if false {
 		//关注的股票,或者全部股票
 		codeReal := "sz000001"
 		//今日分时k线图
-		todayKline := []*tdx.StockKline(nil)
+		todayKline := []*tdx.Kline(nil)
 		//今日分时成交
-		todayTrace := []*tdx.StockMinuteTrade(nil)
+		todayTrace := []*tdx.MinuteTrade(nil)
 		//每秒更新实时数据,并实时计算
 		common.Corn.SetTask("updateReal", "* * * * * *", func() {
 
