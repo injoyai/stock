@@ -1,21 +1,30 @@
 package demo
 
-import "github.com/injoyai/stock/strategy"
+import (
+	"github.com/injoyai/logs"
+	"github.com/injoyai/stock/strategy"
+)
 
 func init() {
 	riseLimit := 0.05 //上涨阈值
 	noticed := false
-	strategy.All.Register(func(data *strategy.Data) {
-		if data.Code != "sz000001" {
+	code := "sz000001"
+	strategy.All.Register(func(i strategy.Interface) {
+
+		TodayKline, err := i.GetKlineMinute(code)
+		if err != nil {
+			logs.Err(err)
 			return
 		}
-		if len(data.TodayKline) == 0 {
+
+		if len(TodayKline) == 0 {
 			return
 		}
+
 		max := float64(0)
 		min := float64(0)
-		open := data.TodayKline[0].Open
-		for _, v := range data.TodayKline {
+		open := TodayKline[0].Open
+		for _, v := range TodayKline {
 			if v.High > max {
 				max = v.High
 			}

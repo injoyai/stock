@@ -7,16 +7,16 @@ var (
 )
 
 type Manage struct {
-	Handler []func(data *Data)
+	Handler []func(i Interface)
 }
 
-func (this *Manage) Register(f ...func(data *Data)) {
+func (this *Manage) Register(f ...func(i Interface)) {
 	this.Handler = append(this.Handler, f...)
 }
 
-func (this *Manage) Do(data *Data) {
+func (this *Manage) Do(i Interface) {
 	for _, v := range this.Handler {
-		v(data)
+		v(i)
 	}
 }
 
@@ -34,4 +34,18 @@ type Data struct {
 	HistoryKlineQuarter  tdx.Klines         //历史k线图
 	HistoryKlineYear     tdx.Klines         //历史k线图
 	HistoryTrace         []any              //历史分时成交
+}
+
+type Interface interface {
+	GetKlineMinute(code string) ([]*tdx.Kline, error)
+	GetKline5Minute(code string) ([]*tdx.Kline, error)
+	GetKline15Minute(code string) ([]*tdx.Kline, error)
+	GetKline30Minute(code string) ([]*tdx.Kline, error)
+	GetKlineHour(code string) ([]*tdx.Kline, error)
+	GetKlineDay(code string) ([]*tdx.Kline, error)
+	GetKlineWeek(code string) ([]*tdx.Kline, error)
+	GetKlineMonth(code string) ([]*tdx.Kline, error)
+	GetKlineQuarter(code string) ([]*tdx.Kline, error)
+	GetKlineYear(code string) ([]*tdx.Kline, error)
+	GetTraceMinute(code string) ([]*tdx.MinuteTrade, error)
 }
