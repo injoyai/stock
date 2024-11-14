@@ -84,6 +84,9 @@ func Dial(addr string, op ...client.Option) (*Client, error) {
 	return cli, nil
 }
 
+/*
+Client 客户端
+*/
 type Client struct {
 	Client   *tdx.Client
 	updateDB *xorms.Engine
@@ -234,9 +237,10 @@ func (this *Client) KlineReal(code string, cache Klines) (Klines, error) {
 		cache = cache[len(cache)-1:] //删除最后一分钟的数据,最后一分钟实时统计的,用新数据更新
 	}
 
+	size := uint16(800)
 	list := Klines(nil)
 	for {
-		resp, err := this.Client.GetKlineMinute(code, 0, 800)
+		resp, err := this.Client.GetKlineMinute(code, 0, size)
 		if err != nil {
 			return cache, err
 		}
@@ -251,7 +255,7 @@ func (this *Client) KlineReal(code string, cache Klines) (Klines, error) {
 			}
 		}
 
-		if done {
+		if resp.Count < size || done {
 			break
 		}
 
@@ -291,7 +295,7 @@ func (this *Client) KlineWeek(code string) ([]*Kline, error) {
 }
 
 func (this *Client) KlineMonth(code string) ([]*Kline, error) {
-	return this.kline("Month", code, this.Client.GetStockKlineMonth) //todo 库的名字没改掉
+	return this.kline("Month", code, this.Client.GetKlineMonth)
 }
 
 func (this *Client) KlineQuarter(code string) ([]*Kline, error) {
@@ -324,11 +328,13 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 		return nil, err
 	}
 
-	lastTime := time.Unix(0, 0)
+	last := new(Kline)
 	if len(cache) > 0 {
-		lastTime = time.Unix(cache[len(cache)-1].Unix, 0)
+		last = cache[len(cache)-1]   //获取最后一条数据,用于截止从服务器拉的数据
+		cache = cache[:len(cache)-1] //去除最后一条数据,用拉取过来的数据更新掉
 	}
 
+	//3. 从服务器拉取数据
 	list := []*Kline(nil)
 	size := uint16(800)
 	for start := uint16(0); ; start += size {
@@ -340,7 +346,7 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 		done := false
 		ls := []*Kline(nil)
 		for _, v := range resp.List {
-			if lastTime.Unix() < v.Time.Unix() {
+			if last.Unix <= v.Time.Unix() {
 				ls = append(ls, NewKline(code, v))
 			} else {
 				done = true
@@ -352,10 +358,19 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 		}
 	}
 
+	//4. 将缺的数据入库
 	err = db.SessionFunc(func(session *xorm.Session) error {
 		for _, v := range list {
-			if _, err := session.Table(table).Insert(v); err != nil {
-				return err
+			if v.Unix == last.Unix {
+				//更新数据库的最后一条数据
+				if _, err := session.Table(table).Where("Unix=?", v.Unix).Update(v); err != nil {
+					return err
+				}
+			} else {
+				//插入新获取到的数据
+				if _, err := session.Table(table).Insert(v); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -364,6 +379,7 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 		return nil, err
 	}
 
+	//5. 更新K线入库的时间,避免重复从服务器拉取,失败问题也不大
 	logs.PrintErr(this.UpdateTime("Kline" + suffix))
 
 	cache = append(cache, list...)
@@ -435,7 +451,7 @@ Trade
 func (this *Client) Trade(code string, dates []string) error {
 
 	//1. 连接数据库
-	filename := fmt.Sprintf("./database/trade/%s_minute.db", code)
+	filename := fmt.Sprintf("./database/%s.db", code)
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {
 		return err

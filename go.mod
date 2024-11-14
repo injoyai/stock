@@ -11,7 +11,8 @@ require (
 	github.com/injoyai/logs v1.0.9
 	github.com/injoyai/lorca v0.0.0-20230816093842-66a8b4247238
 	github.com/injoyai/notice v0.0.1
-	github.com/injoyai/tdx v0.0.0-20241111014134-3b109d8f3ab5
+	github.com/injoyai/tdx v0.0.1
+	github.com/robfig/cron/v3 v3.0.1
 	xorm.io/xorm v1.3.2
 )
 
@@ -64,11 +65,9 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.10.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
-	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/redis/go-redis/v9 v9.5.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/robertkrimen/otto v0.2.1 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.667 // indirect
