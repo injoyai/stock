@@ -4,6 +4,8 @@ import (
 	"github.com/injoyai/conv"
 	"github.com/injoyai/stock/gui"
 	"github.com/injoyai/tdx/protocol"
+	"math"
+	"strings"
 	"time"
 )
 
@@ -56,18 +58,6 @@ type Code struct {
 	InDate   int64  `json:"inDate" xorm:"created"`   //创建时间
 }
 
-//type Codes []*Code
-//
-//func (this Codes) Stocks() []string {
-//	ls := []string(nil)
-//	for _, v := range this {
-//		if v.Stock {
-//			ls = append(ls, v.Code)
-//		}
-//	}
-//	return ls
-//}
-
 /**/
 
 // Update 记录更新时间,避免重复更新
@@ -88,33 +78,63 @@ type Update struct {
 }
 
 func (this *Update) GetVar(key string) *conv.Var {
-	switch key {
+	switch strings.ToLower(key) {
 	case "code":
 		return conv.New(this.Code)
-	case "klineMinute":
+	case "klineminute":
 		return conv.New(this.KlineMinute)
-	case "kline5Minute":
+	case "kline5minute":
 		return conv.New(this.Kline5Minute)
-	case "kline15Minute":
+	case "kline15minute":
 		return conv.New(this.Kline15Minute)
-	case "kline30Minute":
+	case "kline30minute":
 		return conv.New(this.Kline15Minute)
-	case "klineHour":
+	case "klinehour":
 		return conv.New(this.KlineHour)
-	case "klineDay":
+	case "klineday":
 		return conv.New(this.KlineDay)
-	case "klineWeek":
+	case "klineweek":
 		return conv.New(this.KlineWeek)
-	case "klineMonth":
+	case "klinemonth":
 		return conv.New(this.KlineMonth)
-	case "klineQuarter":
+	case "klinequarter":
 		return conv.New(this.KlineQuarter)
-	case "klineYear":
+	case "klineyear":
 		return conv.New(this.KlineYear)
 	default:
 		return conv.Nil()
 	}
 }
+
+func (this *Update) Update(key string) *Update {
+	switch strings.ToLower(key) {
+	case "code":
+		this.Code = time.Now().Unix()
+	case "klineminute":
+		this.KlineMinute = time.Now().Unix()
+	case "kline5minute":
+		this.Kline5Minute = time.Now().Unix()
+	case "kline15minute":
+		this.Kline15Minute = time.Now().Unix()
+	case "kline30minute":
+		this.Kline15Minute = time.Now().Unix()
+	case "klinehour":
+		this.KlineHour = time.Now().Unix()
+	case "klineday":
+		this.KlineDay = time.Now().Unix()
+	case "klineweek":
+		this.KlineWeek = time.Now().Unix()
+	case "klinemonth":
+		this.KlineMonth = time.Now().Unix()
+	case "klinequarter":
+		this.KlineQuarter = time.Now().Unix()
+	case "klineyear":
+		this.KlineYear = time.Now().Unix()
+	}
+	return this
+}
+
+/**/
 
 /**/
 
@@ -156,6 +176,21 @@ type Kline struct {
 	InDate   int64   `json:"inDate" xorm:"created"` //创建时间
 }
 
+func NewKlineTable(suffix string) *KlineTable {
+	return &KlineTable{
+		tableName: "Kline" + suffix,
+	}
+}
+
+type KlineTable struct {
+	Kline     `xorm:"extends"`
+	tableName string
+}
+
+func (this *KlineTable) TableName() string {
+	return this.tableName
+}
+
 type KlineChart struct {
 	Time  []int64   `json:"time"`
 	Price []float64 `json:"price"`
@@ -184,6 +219,41 @@ func (this Klines) Chart(name string) *gui.Chart {
 	}
 	c.Max *= 1.02
 	c.Min *= 0.98
+	return c
+}
+
+func (this Klines) ChartDay(last float64, name string) *gui.Chart {
+	dayMinute := 60 * 4
+	c := &gui.Chart{
+		Labels: make([]string, dayMinute),
+		Datasets: []*gui.ChartItem{{
+			Label: name,
+			Data:  make([]float64, len(this)),
+		}},
+	}
+
+	now := time.Date(2024, 1, 1, 9, 31, 0, 0, time.Local)
+	for i := 0; i < dayMinute/2; i++ {
+		c.Labels[i] = now.Add(time.Minute * time.Duration(i)).Format("15:04")
+	}
+
+	now = time.Date(2024, 1, 1, 13, 0, 0, 0, time.Local)
+	for i := 0; i < dayMinute/2; i++ {
+		c.Labels[i+dayMinute/2] = now.Add(time.Minute * time.Duration(i)).Format("15:04")
+	}
+
+	var sub float64
+	for i, v := range this {
+		c.Datasets[0].Data[i] = v.Close
+		val := math.Abs(v.Close - last)
+		if val > sub {
+			sub = val
+		}
+	}
+
+	c.Max = (last + sub) * 1.02
+	c.Min = (last - sub) * 0.98
+
 	return c
 }
 

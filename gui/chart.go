@@ -8,7 +8,7 @@ import (
 )
 
 //go:embed chart.html
-var chart string
+var ChartHtml string
 
 var (
 	Colors = []string{"rgba(75, 192, 192)", "rgba(192, 75, 75)", "rgb(255, 99, 132)", "rgb(54, 162, 235)", "rgb(255, 206, 86)", "rgb(75, 192, 192)", "rgb(153, 102, 255)", "rgb(255, 159, 64)"}
@@ -19,9 +19,9 @@ func ShowChart(data *Chart) {
 	lorca.Run(&lorca.Config{
 		Width:  700,
 		Height: 400,
-		Html:   chart,
+		Html:   ChartHtml,
 	}, func(app lorca.APP) error {
-		data.init()
+		data.Init()
 		app.Eval(fmt.Sprintf("loading(%s,%f,%f)", conv.String(data), data.Min, data.Max))
 
 		return nil
@@ -35,7 +35,7 @@ type Chart struct {
 	Datasets []*ChartItem `json:"datasets"`
 }
 
-func (this *Chart) init() {
+func (this *Chart) Init() {
 	changeMax := this.Max == 0
 
 	for i, v := range this.Datasets {

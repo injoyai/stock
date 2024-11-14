@@ -168,14 +168,7 @@
                 drawSpline(filteredPoints, dataSet.color);
             }
         });
-        // chartData.datasets.forEach(dataSet => {
-        //     var points = dataSet.data.map((value, index) => {
-        //         var x = padding + (index / (chartData.labels.length - 1)) * graphWidth;
-        //         var y = canvas.height - padding - ((value - minData) / (maxData - minData)) * graphHeight;
-        //         return [x, y];
-        //     });
-        //     drawSpline(points, dataSet.color);
-        // });
+
 
         // 画标签和刻度
         ctx.fillStyle = '#333';
@@ -209,7 +202,7 @@
         var stepSize = (maxData - minData) / 5;
         for (var i = 0; i <= 5; i++) {
             var y = canvas.height - padding - (i / 5) * graphHeight;
-            var value = (minData + i * stepSize).toFixed(0);
+            var value = (minData + i * stepSize).toFixed(2);
             ctx.fillText(value, padding - 10, y);
         }
     }

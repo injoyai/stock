@@ -1,6 +1,7 @@
 package tdx
 
 import (
+	"errors"
 	"fmt"
 	"github.com/injoyai/conv"
 	"github.com/injoyai/goutil/database/sqlite"
@@ -8,8 +9,10 @@ import (
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/logs"
+	"github.com/injoyai/stock/data"
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
+	"github.com/robfig/cron/v3"
 	"time"
 	"xorm.io/xorm"
 )
@@ -33,9 +36,6 @@ func Dial(addr string, op ...client.Option) (*Client, error) {
 		}
 	}
 
-	cli.updateDB = db
-	cli.Extend = conv.NewExtend(cli)
-
 	cli.Client, err = tdx.Dial(addr, func(c *client.Client) {
 		c.Logger.Debug()
 		c.SetRedial(true)
@@ -45,6 +45,42 @@ func Dial(addr string, op ...client.Option) (*Client, error) {
 		return nil, err
 	}
 
+	cli.updateDB = db
+	cli.Extend = conv.NewExtend(cli)
+	cli.Cron = cron.New(cron.WithSeconds())
+	cli.Codes = make(map[string]*Code)
+
+	//判断是否是节假日
+	isHoliday, _ := data.TodayIsHoliday()
+	codes, err := cli.Code(isHoliday)
+	if err != nil {
+		cli.Client.Close()
+		return nil, err
+	}
+
+	for _, code := range codes {
+		cli.Codes[code.Exchange+code.Code] = code
+	}
+
+	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
+	cli.Cron.AddFunc("0 0 4 * * *", func() {
+		//1. 判断是否是节假日
+		if isHoliday, _ := data.TodayIsHoliday(); isHoliday {
+			return
+		}
+		//2. 更新代码信息
+		codes, err = cli.Code(isHoliday)
+		if err != nil {
+			logs.Err(err)
+			return
+		}
+		codeMap := make(map[string]*Code)
+		for _, code := range codes {
+			codeMap[code.Exchange+code.Code] = code
+		}
+		cli.Codes = codeMap
+	})
+
 	return cli, nil
 }
 
@@ -52,8 +88,19 @@ type Client struct {
 	Client   *tdx.Client
 	updateDB *xorms.Engine
 	conv.Extend
+	Codes map[string]*Code
+	*cron.Cron
 }
 
+// GetCodeName 获取股票中文名称
+func (this *Client) GetCodeName(code string) string {
+	if v, ok := this.Codes[code]; ok {
+		return v.Name
+	}
+	return "未知"
+}
+
+// GetVar 实现接口
 func (this *Client) GetVar(key string) *conv.Var {
 	if this.updateDB == nil {
 		return conv.Nil()
@@ -65,11 +112,14 @@ func (this *Client) GetVar(key string) *conv.Var {
 	return data.GetVar(key)
 }
 
+// UpdateTime 更新时间,内部使用
 func (this *Client) UpdateTime(key string) error {
-	_, err := this.updateDB.Table(new(Update)).Update(map[string]int64{key: time.Now().Unix()})
+	u := new(Update).Update(key)
+	_, err := this.updateDB.Update(u)
 	return err
 }
 
+// OpenDB 打开数据库,内部使用
 func (this *Client) OpenDB(filename string, entity any) (*xorms.Engine, error) {
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {
@@ -157,10 +207,22 @@ func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 	}
 
 	//更新获取代码的时间点
-	logs.PrintErr(this.UpdateTime("Code"))
+	logs.PrintErr(this.UpdateTime("code"))
 
 	return list, nil
 
+}
+
+// Quote 盘口信息
+func (this *Client) Quote(code string) (*protocol.Quote, error) {
+	resp, err := this.Client.GetQuote(code)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, errors.New("not found")
+	}
+	return resp[0], nil
 }
 
 // KlineReal 分钟实时获取
@@ -200,75 +262,79 @@ func (this *Client) KlineReal(code string, cache Klines) (Klines, error) {
 
 }
 
-func (this *Client) KlineMinute(code string) error {
-	return this.kline("minute", code, this.Client.GetKlineMinute)
+func (this *Client) KlineMinute(code string) ([]*Kline, error) {
+	return this.kline("Minute", code, this.Client.GetKlineMinute)
 }
 
-func (this *Client) Kline5Minute(code string) error {
-	return this.kline("5minute", code, this.Client.GetKline5Minute)
+func (this *Client) Kline5Minute(code string) ([]*Kline, error) {
+	return this.kline("5Minute", code, this.Client.GetKline5Minute)
 }
 
-func (this *Client) Kline15Minute(code string) error {
-	return this.kline("15minute", code, this.Client.GetKline15Minute)
+func (this *Client) Kline15Minute(code string) ([]*Kline, error) {
+	return this.kline("15Minute", code, this.Client.GetKline15Minute)
 }
 
-func (this *Client) Kline30Minute(code string) error {
-	return this.kline("30minute", code, this.Client.GetKline30Minute)
+func (this *Client) Kline30Minute(code string) ([]*Kline, error) {
+	return this.kline("30Minute", code, this.Client.GetKline30Minute)
 }
 
-func (this *Client) KlineHour(code string) error {
-	return this.kline("hour", code, this.Client.GetKlineHour)
+func (this *Client) KlineHour(code string) ([]*Kline, error) {
+	return this.kline("Hour", code, this.Client.GetKlineHour)
 }
 
-func (this *Client) KlineDay(code string) error {
-	return this.kline("day", code, this.Client.GetKlineDay)
+func (this *Client) KlineDay(code string) ([]*Kline, error) {
+	return this.kline("Day", code, this.Client.GetKlineDay)
 }
 
-func (this *Client) KlineWeek(code string) error {
-	return this.kline("week", code, this.Client.GetKlineWeek)
+func (this *Client) KlineWeek(code string) ([]*Kline, error) {
+	return this.kline("Week", code, this.Client.GetKlineWeek)
 }
 
-func (this *Client) KlineMonth(code string) error {
-	return this.kline("month", code, this.Client.GetStockKlineMonth) //todo 库的名字没改掉
+func (this *Client) KlineMonth(code string) ([]*Kline, error) {
+	return this.kline("Month", code, this.Client.GetStockKlineMonth) //todo 库的名字没改掉
 }
 
-func (this *Client) KlineQuarter(code string) error {
-	return this.kline("quarter", code, this.Client.GetKlineQuarter)
+func (this *Client) KlineQuarter(code string) ([]*Kline, error) {
+	return this.kline("Quarter", code, this.Client.GetKlineQuarter)
 }
 
-func (this *Client) KlineYear(code string) error {
-	return this.kline("year", code, this.Client.GetKlineYear)
+func (this *Client) KlineYear(code string) ([]*Kline, error) {
+	return this.kline("Year", code, this.Client.GetKlineYear)
 }
 
-func (this *Client) kline(suffix, code string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) error {
+func (this *Client) kline(suffix, code string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) ([]*Kline, error) {
 
 	//1. 连接数据库
-	filename := fmt.Sprintf("./database/kline/%s_%s.db", code, suffix)
+	filename := fmt.Sprintf("./database/%s.db", code)
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer db.Close()
 
-	if err := db.Sync(new(Kline)); err != nil {
-		return err
+	table := NewKlineTable(suffix)
+	if err := db.Sync(table); err != nil {
+		return nil, err
 	}
 
-	//2. 查询数据库最后的数据
-	last := new(Kline)
-	_, err = db.Desc("ID").Get(last)
+	//2. 查询数据库的数据
+	cache := []*Kline(nil)
+	err = db.Table(table).Find(&cache)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	lastTime := time.Unix(last.Unix, 0)
-	list := []*Kline(nil)
+	lastTime := time.Unix(0, 0)
+	if len(cache) > 0 {
+		lastTime = time.Unix(cache[len(cache)-1].Unix, 0)
+	}
 
+	list := []*Kline(nil)
 	size := uint16(800)
 	for start := uint16(0); ; start += size {
 		resp, err := get(code, start, size)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		done := false
@@ -286,15 +352,23 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 		}
 	}
 
-	return db.SessionFunc(func(session *xorm.Session) error {
+	err = db.SessionFunc(func(session *xorm.Session) error {
 		for _, v := range list {
-			if _, err := session.Insert(v); err != nil {
+			if _, err := session.Table(table).Insert(v); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
+	logs.PrintErr(this.UpdateTime("Kline" + suffix))
+
+	cache = append(cache, list...)
+
+	return cache, nil
 }
 
 /*
