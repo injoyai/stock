@@ -46,5 +46,5 @@
 
 2. 小工具-实时分时
 
-   位置: cmd/chart/chart.go
+   位置: [`cmd/chart/chart.go`](https://github.com/injoyai/stock/blob/main/cmd/chart/chart.go)
    ![](docs/chart.png)
