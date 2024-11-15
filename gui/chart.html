@@ -223,7 +223,7 @@
     function loading(data, min, max) {
         var notification = document.createElement('div');
         notification.className = 'notification';
-        notification.innerText = '加载中...';
+        //notification.innerText = '加载中...';
         document.body.appendChild(notification);
 
         canvas.width = document.getElementById('container').clientWidth * 0.9;
@@ -232,7 +232,7 @@
         drawChart(data, min, max);
         drawLegend(data);
 
-        notification.innerText = '加载成功';
+        // notification.innerText = '加载成功';
         setTimeout(function () {
             document.body.removeChild(notification);
         }, 2000);

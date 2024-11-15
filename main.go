@@ -15,7 +15,7 @@ func main() {
 	logs.PrintErr(err)
 
 	//连接客户端
-	c, err := tdx.Dial("124.71.187.122")
+	c, err := tdx.Dial(tdx.Hosts)
 	logs.PanicErr(err)
 
 	//每天下午16点进行数据更新
@@ -42,11 +42,12 @@ func main() {
 			c.KlineMonth,
 			c.KlineQuarter,
 			c.KlineYear,
+			//c.Trade,
 		}
 
-		fns = []func(code string) ([]*tdx.Kline, error){
-			c.KlineMinute,
-		}
+		//fns = []func(code string) ([]*tdx.Kline, error){
+		//	c.KlineMinute,
+		//}
 
 		for _, f := range fns {
 			g.Retry(func() error {

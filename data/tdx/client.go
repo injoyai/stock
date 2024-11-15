@@ -17,7 +17,9 @@ import (
 	"xorm.io/xorm"
 )
 
-func Dial(addr string, op ...client.Option) (*Client, error) {
+var Hosts = tdx.Hosts
+
+func Dial(hosts []string, op ...client.Option) (*Client, error) {
 
 	cli := &Client{}
 
@@ -36,7 +38,7 @@ func Dial(addr string, op ...client.Option) (*Client, error) {
 		}
 	}
 
-	cli.Client, err = tdx.Dial(addr, func(c *client.Client) {
+	cli.Client, err = tdx.DialWith(tdx.NewHostDial(hosts, 0), func(c *client.Client) {
 		c.Logger.Debug()
 		c.SetRedial(true)
 		c.SetOption(op...)
@@ -46,7 +48,7 @@ func Dial(addr string, op ...client.Option) (*Client, error) {
 	}
 
 	cli.updateDB = db
-	cli.Extend = conv.NewExtend(cli)
+	cli.Update = conv.NewExtend(cli)
 	cli.Cron = cron.New(cron.WithSeconds())
 	cli.Codes = make(map[string]*Code)
 
@@ -90,8 +92,8 @@ Client 客户端
 type Client struct {
 	Client   *tdx.Client
 	updateDB *xorms.Engine
-	conv.Extend
-	Codes map[string]*Code
+	Update   conv.Extend
+	Codes    map[string]*Code
 	*cron.Cron
 }
 
@@ -108,11 +110,11 @@ func (this *Client) GetVar(key string) *conv.Var {
 	if this.updateDB == nil {
 		return conv.Nil()
 	}
-	data := new(Update)
-	if _, err := this.updateDB.Get(data); err != nil {
+	up := new(Update)
+	if _, err := this.updateDB.Get(up); err != nil {
 		return conv.Nil()
 	}
-	return data.GetVar(key)
+	return up.GetVar(key)
 }
 
 // UpdateTime 更新时间,内部使用
@@ -160,7 +162,7 @@ func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 	}
 
 	//判断今天是否更新过
-	if times.IntegerDay(time.Now()).Unix() < this.GetInt64("code") {
+	if times.IntegerDay(time.Now()).Unix() < this.Update.GetInt64("code") {
 		return list, nil
 	}
 

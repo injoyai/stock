@@ -28,7 +28,7 @@ func main() {
 	}
 
 	//连接客户端
-	c, err := tdx.Dial("124.71.187.122", func(c *client.Client) {
+	c, err := tdx.Dial(tdx.Hosts, func(c *client.Client) {
 		c.Logger.Debug(false)
 	})
 	logs.PanicErr(err)
