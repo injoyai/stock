@@ -5,6 +5,7 @@ import (
 	"github.com/injoyai/conv"
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/database/xorms"
+	"github.com/injoyai/goutil/g"
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/logs"
@@ -95,6 +96,65 @@ type Client struct {
 	Update   conv.Extend
 	Codes    map[string]*Code
 	*cron.Cron
+}
+
+// UpdateCodes 更新股票
+func (this *Client) UpdateCodes(codes []string, retrys ...int) error {
+	retry := conv.DefaultInt(3, retrys...)
+
+	//1. 判断是否是节假日
+	isHoliday, err := data.TodayIsHoliday()
+	if err != nil {
+		return err
+	} else if isHoliday {
+		return nil
+	}
+
+	//2. 遍历全部股票
+	for _, code := range codes {
+		//3. 进行按股票进行每日更新,并尝试重试
+		for _, f := range []func(code string) ([]*Kline, error){
+			this.KlineMinute,
+			this.Kline5Minute,
+			this.Kline15Minute,
+			this.Kline30Minute,
+			this.KlineHour,
+			this.KlineDay,
+			this.KlineWeek,
+			this.KlineMonth,
+			this.KlineQuarter,
+			this.KlineYear,
+		} {
+			g.Retry(func() error {
+				_, err := f(code)
+				logs.PrintErr(err)
+				return err
+			}, retry)
+		}
+
+		//4. 获取日K线和所有日期
+		dates := []string(nil)
+		g.Retry(func() error {
+			resp, err := this.KlineDay(code)
+			if err != nil {
+				logs.Err(err)
+				return err
+			}
+			for _, v := range resp {
+				dates = append(dates, time.Unix(v.Unix, 0).Format("20060102"))
+			}
+			return nil
+		}, retry)
+
+		//5. 获取分时成交
+		g.Retry(func() error {
+			_, err := this.Trade(code, dates)
+			logs.PrintErr(err)
+			return err
+		}, retry)
+	}
+
+	return nil
 }
 
 // GetCodes 获取股票代码
