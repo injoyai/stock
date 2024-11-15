@@ -2,7 +2,6 @@ package tdx
 
 import (
 	"errors"
-	"fmt"
 	"github.com/injoyai/conv"
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/database/xorms"
@@ -23,7 +22,7 @@ func Dial(hosts []string, op ...client.Option) (*Client, error) {
 
 	cli := &Client{}
 
-	db, err := cli.OpenDB("./database/update.db", new(Update))
+	db, err := cli.OpenDB("update", new(Update))
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +69,7 @@ func Dial(hosts []string, op ...client.Option) (*Client, error) {
 		if isHoliday, _ := data.TodayIsHoliday(); isHoliday {
 			return
 		}
+
 		//2. 更新代码信息
 		codes, err = cli.Code(isHoliday)
 		if err != nil {
@@ -95,6 +95,17 @@ type Client struct {
 	Update   conv.Extend
 	Codes    map[string]*Code
 	*cron.Cron
+}
+
+// GetCodes 获取股票代码
+func (this *Client) GetCodes() []string {
+	ls := make([]string, len(this.Codes))
+	i := 0
+	for k, _ := range this.Codes {
+		ls[i] = k
+		i++
+	}
+	return ls
 }
 
 // GetCodeName 获取股票中文名称
@@ -125,7 +136,8 @@ func (this *Client) UpdateTime(key string) error {
 }
 
 // OpenDB 打开数据库,内部使用
-func (this *Client) OpenDB(filename string, entity any) (*xorms.Engine, error) {
+func (this *Client) OpenDB(code string, entity any) (*xorms.Engine, error) {
+	filename := "./database/" + code + ".db"
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {
 		return nil, err
@@ -140,15 +152,11 @@ func (this *Client) OpenDB(filename string, entity any) (*xorms.Engine, error) {
 func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 
 	//1. 打开数据库
-	db, err := sqlite.NewXorm("./database/code.db")
+	db, err := this.OpenDB("code", new(Code))
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
-
-	if err := db.Sync(new(Code)); err != nil {
-		return nil, err
-	}
 
 	//2. 查询数据库所有股票
 	list := []*Code(nil)
@@ -311,17 +319,12 @@ func (this *Client) KlineYear(code string) ([]*Kline, error) {
 func (this *Client) kline(suffix, code string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) ([]*Kline, error) {
 
 	//1. 连接数据库
-	filename := fmt.Sprintf("./database/%s.db", code)
-	db, err := sqlite.NewXorm(filename)
+	table := NewKlineTable(suffix)
+	db, err := this.OpenDB(code, table)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
-
-	table := NewKlineTable(suffix)
-	if err := db.Sync(table); err != nil {
-		return nil, err
-	}
 
 	//2. 查询数据库的数据
 	cache := []*Kline(nil)
@@ -390,99 +393,76 @@ func (this *Client) kline(suffix, code string, get func(code string, start, coun
 }
 
 /*
-KlineDay2 日k线
-比KlineDay多返回个全部日期,用于判断有效地数据时间
+Trade
+@code 股票代码，例sh000001
+@dates 股票的所有交易日期，格式20241106
 */
-func (this *Client) KlineDay2(code string) ([]string, error) {
+func (this *Client) Trade(code string, dates []string) ([]*Trade, error) {
+	if len(dates) == 0 {
+		return nil, nil
+	}
 
 	//1. 连接数据库
-	filename := fmt.Sprintf("./database/kline/%s_day.db", code)
-	db, err := sqlite.NewXorm(filename)
+	db, err := this.OpenDB(code, new(Trade))
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	if err := db.Sync(new(Kline)); err != nil {
-		return nil, err
-	}
-
-	//2. 查询数据库最后的数据
-	last := new(Kline)
-	has, err := db.Desc("ID").Get(last)
-	if err != nil {
-		return nil, err
-	}
-	_ = has
-
 	//2. 查询最后的数据时间
-	resp, err := this.Client.GetKlineDayAll(code)
+	last := new(Trade)
+	_, err = db.Desc("ID").Get(last)
 	if err != nil {
 		return nil, err
 	}
 
-	list := []*Kline(nil)
-	dates := []string(nil)
-	for _, v := range resp.List {
-		dates = append(dates, v.Time.Format("20060102"))
-
-		if last.Unix < v.Time.Unix() {
-			list = append(list, NewKline(code, v))
+	//3. 判断最后一条数据是否是15:00的,否则删除当天的数据
+	full := last.Hour == 15 && last.Minute == 0
+	if !full {
+		if _, err := db.Where("Date=?", last.Date).Delete(new(Trade)); err != nil {
+			return nil, err
 		}
-
 	}
 
+	//4. 如果最后一条数据是今天的数据，直接返回
+	if last.Date == dates[len(dates)-1] && full {
+		list := []*Trade(nil)
+		err = db.Where("Date=?", last.Date).Find(&list)
+		return list, err
+	}
+
+	//5. 获取数据
+	list := [][]*Trade(nil) //时间倒序的
+	for i := len(dates) - 1; i > 0; i-- {
+		date := dates[i]
+		if date < last.Date || (!full && date == last.Date) {
+			break
+		}
+		resp, err := this.Client.GetHistoryMinuteTradeAll(date, code)
+		if err != nil {
+			return nil, err
+		}
+		ls := []*Trade(nil)
+		for _, v := range resp.List {
+			ls = append(ls, NewTrade(code, date, v))
+		}
+		list = append(list, ls)
+		if resp.Count == 0 {
+			break
+		}
+	}
+
+	//6. 插入到数据库
 	err = db.SessionFunc(func(session *xorm.Session) error {
-		for _, v := range list {
-			if _, err := session.Insert(v); err != nil {
-				return err
+		for i := len(list) - 1; i >= 0; i-- {
+			for _, v := range list[i] {
+				if _, err := session.Insert(v); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
 	})
 
-	return dates, err
-}
-
-/*
-Trade
-@c 通达信的客户端
-@code 股票代码，例sh000001
-@dates 股票的所有交易日期，格式20241106
-*/
-func (this *Client) Trade(code string, dates []string) error {
-
-	//1. 连接数据库
-	filename := fmt.Sprintf("./database/%s.db", code)
-	db, err := sqlite.NewXorm(filename)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	//2. 查询最后的数据时间
-	last := new(MinuteTrade)
-	_, err = db.Desc("ID").Get(last)
-	if err != nil {
-		return err
-	}
-
-	//3. 遍历所有日期，判断是否有缺的数据
-	for _, date := range dates {
-		if last.Date < date {
-
-			//4. 获取数据并插入
-			resp, err := this.Client.GetHistoryMinuteTradeAll(date, code)
-			if err != nil {
-				return err
-			}
-			list := []*MinuteTrade(nil)
-			for _, v := range resp.List {
-				list = append(list, NewMinuteTrade(code, date, v))
-			}
-		}
-
-	}
-
-	return nil
+	return list[0], nil
 }

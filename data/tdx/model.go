@@ -88,7 +88,7 @@ func (this *Update) GetVar(key string) *conv.Var {
 	case "kline15minute":
 		return conv.New(this.Kline15Minute)
 	case "kline30minute":
-		return conv.New(this.Kline15Minute)
+		return conv.New(this.Kline30Minute)
 	case "klinehour":
 		return conv.New(this.KlineHour)
 	case "klineday":
@@ -117,7 +117,7 @@ func (this *Update) Update(key string) *Update {
 	case "kline15minute":
 		this.Kline15Minute = time.Now().Unix()
 	case "kline30minute":
-		this.Kline15Minute = time.Now().Unix()
+		this.Kline30Minute = time.Now().Unix()
 	case "klinehour":
 		this.KlineHour = time.Now().Unix()
 	case "klineday":
@@ -307,8 +307,8 @@ func RiseRate(k1, k2 *Kline) float64 {
 
 /**/
 
-func NewMinuteTrade(code, date string, trace *protocol.HistoryMinuteTrade) *MinuteTrade {
-	return &MinuteTrade{
+func NewTrade(code, date string, trace *protocol.HistoryMinuteTrade) *Trade {
+	return &Trade{
 		Exchange: code[:2],
 		Code:     code[2:],
 		Date:     date,
@@ -325,8 +325,8 @@ func NewMinuteTrade(code, date string, trace *protocol.HistoryMinuteTrade) *Minu
 	}
 }
 
-// MinuteTrade 分时成交
-type MinuteTrade struct {
+// Trade 分时成交
+type Trade struct {
 	ID       int64   `json:"id"`                    //主键
 	Exchange string  `json:"exchange" xorm:"index"` //交易所
 	Code     string  `json:"code" xorm:"index"`     //代码
