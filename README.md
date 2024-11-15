@@ -1,11 +1,13 @@
 ### 说明
 
+---
 1. 各个渠道的数据获取
 2. 存入到mysql(基本信息)和influxdb(历史数据)
 3. 进行数据分析,回测等
 
 ### 科普
 
+---
 #### 新韭菜,有些理解可能不是很准确
 
 1. 中国的股市开盘时间为：每周一至周五的上午9:30——11：30， 下午13:00——15:00。中国股市收盘时间为：每周一至周五的下午3点。
@@ -15,6 +17,8 @@
    300开头的股票是创业板股票；400开头的股票是三板市场股票。
 
 ### 数据接口
+
+---
 
 1. 通达信的协议 https://github.com/injoyai/tdx
 
@@ -28,19 +32,21 @@
 
 ### 详情
 
+---
+
 1. 结构
     - 代码(例sz000001)
-        - KlineMinute(1分K线)
-        - Kline5Minute(5分K线)
-        - Kline15Minute(15分K线)
-        - Kline30Minute(30分K线)
-        - KlineHour(时K线)
-        - KlineDay(日K线)
-        - KlineWeek(周K线)
-        - KlineMonth(月K线)
-        - KlineQuarter(季度K线)
-        - KlineYear(年K线)
-        - Trace(分时成交)
+        - KlineMinute(`1分K线`)
+        - Kline5Minute`(5分K线)`
+        - Kline15Minute`(15分K线)`
+        - Kline30Minute`(30分K线)`
+        - KlineHour`(时K线)`
+        - KlineDay`(日K线)`
+        - KlineWeek`(周K线)`
+        - KlineMonth`(月K线)`
+        - KlineQuarter`(季度K线)`
+        - KlineYear`(年K线)`
+        - Trace`(分时成交)`
 
    ![](docs/tables.png)
 
