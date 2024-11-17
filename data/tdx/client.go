@@ -56,16 +56,11 @@ func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 	//判断是否是节假日
 	isHoliday, _ := data.TodayIsHoliday()
 	//判断是否获取股票信息
-	codes, err := cli.Code(isHoliday)
+	err = cli.UpdateCode(isHoliday)
 	if err != nil {
 		cli.Pool.Close()
 		return nil, err
 	}
-	codeMap := make(map[string]*Code)
-	for _, code := range codes {
-		codeMap[code.Exchange+code.Code] = code
-	}
-	cli.Codes = codeMap
 
 	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
 	cli.Cron.AddFunc("0 0 4 * * *", func() {
@@ -76,16 +71,12 @@ func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 		}
 
 		//2. 更新代码信息
-		codes, err := cli.Code(isHoliday)
+		err := cli.UpdateCode(isHoliday)
 		if err != nil {
 			logs.Err(err)
 			return
 		}
-		codeMap := make(map[string]*Code)
-		for _, code := range codes {
-			codeMap[code.Exchange+code.Code] = code
-		}
-		cli.Codes = codeMap
+
 	})
 
 	return cli, nil
@@ -241,6 +232,19 @@ func (this *Client) OpenDB(code string, entity any) (*xorms.Engine, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func (this *Client) UpdateCode(byDatabase bool) error {
+	codes, err := this.Code(byDatabase)
+	if err != nil {
+		return err
+	}
+	codeMap := make(map[string]*Code)
+	for _, code := range codes {
+		codeMap[code.Exchange+code.Code] = code
+	}
+	this.Codes = codeMap
+	return nil
 }
 
 // Code 更新股票并返回结果
