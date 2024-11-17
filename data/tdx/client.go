@@ -18,9 +18,7 @@ import (
 )
 
 var (
-	Hosts     = tdx.Hosts
-	Codes     *map[string]*Code //所有股票缓存
-	CodesTime = time.Time{}     //全部股票更新时间
+	Hosts = tdx.Hosts
 )
 
 func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
@@ -57,26 +55,17 @@ func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 
 	//判断是否是节假日
 	isHoliday, _ := data.TodayIsHoliday()
-
 	//判断是否获取股票信息
-	if Codes == nil || times.Now().IntegerDay().Sub(CodesTime) > 0 {
-		codes, err := cli.Code(isHoliday)
-		if err != nil {
-			cli.Pool.Close()
-			return nil, err
-		}
-		codeMap := make(map[string]*Code)
-		for _, code := range codes {
-			codeMap[code.Exchange+code.Code] = code
-		}
-		if Codes == nil {
-			Codes = &codeMap
-		} else {
-			*Codes = codeMap
-		}
-		CodesTime = time.Now()
-		cli.Codes = Codes
+	codes, err := cli.Code(isHoliday)
+	if err != nil {
+		cli.Pool.Close()
+		return nil, err
 	}
+	codeMap := make(map[string]*Code)
+	for _, code := range codes {
+		codeMap[code.Exchange+code.Code] = code
+	}
+	cli.Codes = codeMap
 
 	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
 	cli.Cron.AddFunc("0 0 4 * * *", func() {
@@ -86,25 +75,17 @@ func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 			return
 		}
 
-		if Codes == nil || times.Now().IntegerDay().Sub(CodesTime) > 0 {
-			//2. 更新代码信息
-			codes, err := cli.Code(isHoliday)
-			if err != nil {
-				logs.Err(err)
-				return
-			}
-			codeMap := make(map[string]*Code)
-			for _, code := range codes {
-				codeMap[code.Exchange+code.Code] = code
-			}
-			if Codes == nil {
-				Codes = &codeMap
-			} else {
-				*Codes = codeMap
-			}
-			CodesTime = time.Now()
-			cli.Codes = Codes
+		//2. 更新代码信息
+		codes, err := cli.Code(isHoliday)
+		if err != nil {
+			logs.Err(err)
+			return
 		}
+		codeMap := make(map[string]*Code)
+		for _, code := range codes {
+			codeMap[code.Exchange+code.Code] = code
+		}
+		cli.Codes = codeMap
 	})
 
 	return cli, nil
@@ -118,7 +99,7 @@ type Client struct {
 	//Client   *tdx.Client
 	updateDB *xorms.Engine
 	Update   conv.Extend
-	Codes    *map[string]*Code
+	Codes    map[string]*Code
 	*cron.Cron
 }
 
@@ -194,7 +175,7 @@ func (this *Client) UpdateCodes(codes []string, isHoliday bool, retrys ...int) e
 // GetStockCodes 获取股票代码,不一定全
 func (this *Client) GetStockCodes() []string {
 	ls := []string(nil)
-	for k, _ := range *this.Codes {
+	for k, _ := range this.Codes {
 		if len(k) == 8 {
 			switch k[:2] {
 			case "sz":
@@ -213,9 +194,9 @@ func (this *Client) GetStockCodes() []string {
 
 // GetCodes 获取所有代码
 func (this *Client) GetCodes() []string {
-	ls := make([]string, len(*this.Codes))
+	ls := make([]string, len(this.Codes))
 	i := 0
-	for k, _ := range *this.Codes {
+	for k, _ := range this.Codes {
 		ls[i] = k
 		i++
 	}
@@ -224,7 +205,7 @@ func (this *Client) GetCodes() []string {
 
 // GetCodeName 获取股票中文名称
 func (this *Client) GetCodeName(code string) string {
-	if v, ok := (*this.Codes)[code]; ok {
+	if v, ok := this.Codes[code]; ok {
 		return v.Name
 	}
 	return "未知"
