@@ -122,6 +122,16 @@ type Client struct {
 	*cron.Cron
 }
 
+func (this *Client) Go(f func(c *tdx.Client)) error {
+	c, err := this.Pool.Get2()
+	if err != nil {
+		return err
+	}
+	defer this.Pool.Put(c)
+	go f(c)
+	return nil
+}
+
 // UpdateCodes 更新股票
 func (this *Client) UpdateCodes(codes []string, isHoliday bool, retrys ...int) error {
 	retry := conv.DefaultInt(3, retrys...)
