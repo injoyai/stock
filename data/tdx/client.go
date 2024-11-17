@@ -17,9 +17,13 @@ import (
 	"xorm.io/xorm"
 )
 
-var Hosts = tdx.Hosts
+var (
+	Hosts     = tdx.Hosts
+	Codes     *map[string]*Code //所有股票缓存
+	CodesTime = time.Time{}     //全部股票更新时间
+)
 
-func Dial(hosts []string, op ...client.Option) (*Client, error) {
+func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 
 	cli := &Client{}
 
@@ -38,7 +42,7 @@ func Dial(hosts []string, op ...client.Option) (*Client, error) {
 		}
 	}
 
-	cli.Client, err = tdx.DialWith(tdx.NewHostDial(hosts, 0), func(c *client.Client) {
+	cli.Pool, err = NewPool(hosts, cap, func(c *client.Client) {
 		c.Logger.Debug()
 		c.SetRedial(true)
 		c.SetOption(op...)
@@ -50,38 +54,57 @@ func Dial(hosts []string, op ...client.Option) (*Client, error) {
 	cli.updateDB = db
 	cli.Update = conv.NewExtend(cli)
 	cli.Cron = cron.New(cron.WithSeconds())
-	cli.Codes = make(map[string]*Code)
 
 	//判断是否是节假日
 	isHoliday, _ := data.TodayIsHoliday()
-	codes, err := cli.Code(isHoliday)
-	if err != nil {
-		cli.Client.Close()
-		return nil, err
-	}
 
-	for _, code := range codes {
-		cli.Codes[code.Exchange+code.Code] = code
-	}
-
-	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
-	cli.Cron.AddFunc("0 0 4 * * *", func() {
-		//1. 判断是否是节假日
-		if isHoliday, _ := data.TodayIsHoliday(); isHoliday {
-			return
-		}
-
-		//2. 更新代码信息
-		codes, err = cli.Code(isHoliday)
+	//判断是否获取股票信息
+	if Codes == nil || times.Now().IntegerDay().Sub(CodesTime) > 0 {
+		codes, err := cli.Code(isHoliday)
 		if err != nil {
-			logs.Err(err)
-			return
+			cli.Pool.Close()
+			return nil, err
 		}
 		codeMap := make(map[string]*Code)
 		for _, code := range codes {
 			codeMap[code.Exchange+code.Code] = code
 		}
-		cli.Codes = codeMap
+		if Codes == nil {
+			Codes = &codeMap
+		} else {
+			*Codes = codeMap
+		}
+		CodesTime = time.Now()
+		cli.Codes = Codes
+	}
+
+	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
+	cli.Cron.AddFunc("0 0 4 * * *", func() {
+		//1. 判断是否是节假日
+		isHoliday, _ := data.TodayIsHoliday()
+		if isHoliday {
+			return
+		}
+
+		if Codes == nil || times.Now().IntegerDay().Sub(CodesTime) > 0 {
+			//2. 更新代码信息
+			codes, err := cli.Code(isHoliday)
+			if err != nil {
+				logs.Err(err)
+				return
+			}
+			codeMap := make(map[string]*Code)
+			for _, code := range codes {
+				codeMap[code.Exchange+code.Code] = code
+			}
+			if Codes == nil {
+				Codes = &codeMap
+			} else {
+				*Codes = codeMap
+			}
+			CodesTime = time.Now()
+			cli.Codes = Codes
+		}
 	})
 
 	return cli, nil
@@ -91,27 +114,28 @@ func Dial(hosts []string, op ...client.Option) (*Client, error) {
 Client 客户端
 */
 type Client struct {
-	Client   *tdx.Client
+	Pool *Pool
+	//Client   *tdx.Client
 	updateDB *xorms.Engine
 	Update   conv.Extend
-	Codes    map[string]*Code
+	Codes    *map[string]*Code
 	*cron.Cron
 }
 
 // UpdateCodes 更新股票
-func (this *Client) UpdateCodes(codes []string, retrys ...int) error {
+func (this *Client) UpdateCodes(codes []string, isHoliday bool, retrys ...int) error {
 	retry := conv.DefaultInt(3, retrys...)
 
 	//1. 判断是否是节假日
-	isHoliday, err := data.TodayIsHoliday()
-	if err != nil {
-		return err
-	} else if isHoliday {
+	if isHoliday {
 		return nil
 	}
 
 	//2. 遍历全部股票
-	for _, code := range codes {
+	for i := 0; i < len(codes); i++ {
+
+		logs.Debug(codes[i])
+
 		//3. 进行按股票进行每日更新,并尝试重试
 		for _, f := range []func(code string) ([]*Kline, error){
 			this.KlineMinute,
@@ -119,14 +143,14 @@ func (this *Client) UpdateCodes(codes []string, retrys ...int) error {
 			this.Kline15Minute,
 			this.Kline30Minute,
 			this.KlineHour,
-			this.KlineDay,
+			//this.KlineDay,
 			this.KlineWeek,
 			this.KlineMonth,
 			this.KlineQuarter,
 			this.KlineYear,
 		} {
 			g.Retry(func() error {
-				_, err := f(code)
+				_, err := f(codes[i])
 				logs.PrintErr(err)
 				return err
 			}, retry)
@@ -135,7 +159,7 @@ func (this *Client) UpdateCodes(codes []string, retrys ...int) error {
 		//4. 获取日K线和所有日期
 		dates := []string(nil)
 		g.Retry(func() error {
-			resp, err := this.KlineDay(code)
+			resp, err := this.KlineDay(codes[i])
 			if err != nil {
 				logs.Err(err)
 				return err
@@ -148,7 +172,7 @@ func (this *Client) UpdateCodes(codes []string, retrys ...int) error {
 
 		//5. 获取分时成交
 		g.Retry(func() error {
-			_, err := this.Trade(code, dates)
+			_, err := this.Trade(codes[i], dates)
 			logs.PrintErr(err)
 			return err
 		}, retry)
@@ -157,11 +181,31 @@ func (this *Client) UpdateCodes(codes []string, retrys ...int) error {
 	return nil
 }
 
-// GetCodes 获取股票代码
+// GetStockCodes 获取股票代码,不一定全
+func (this *Client) GetStockCodes() []string {
+	ls := []string(nil)
+	for k, _ := range *this.Codes {
+		if len(k) == 8 {
+			switch k[:2] {
+			case "sz":
+				if IsStock(protocol.ExchangeSZ, k[2:]) {
+					ls = append(ls, k)
+				}
+			case "sh":
+				if IsStock(protocol.ExchangeSH, k[2:]) {
+					ls = append(ls, k)
+				}
+			}
+		}
+	}
+	return ls
+}
+
+// GetCodes 获取所有代码
 func (this *Client) GetCodes() []string {
-	ls := make([]string, len(this.Codes))
+	ls := make([]string, len(*this.Codes))
 	i := 0
-	for k, _ := range this.Codes {
+	for k, _ := range *this.Codes {
 		ls[i] = k
 		i++
 	}
@@ -170,7 +214,7 @@ func (this *Client) GetCodes() []string {
 
 // GetCodeName 获取股票中文名称
 func (this *Client) GetCodeName(code string) string {
-	if v, ok := this.Codes[code]; ok {
+	if v, ok := (*this.Codes)[code]; ok {
 		return v.Name
 	}
 	return "未知"
@@ -211,6 +255,9 @@ func (this *Client) OpenDB(code string, entity any) (*xorms.Engine, error) {
 // Code 更新股票并返回结果
 func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+
 	//1. 打开数据库
 	db, err := this.OpenDB("code", new(Code))
 	if err != nil {
@@ -243,7 +290,7 @@ func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 	insert := []*Code(nil)
 	update := []*Code(nil)
 	for _, exchange := range []protocol.Exchange{protocol.ExchangeSH, protocol.ExchangeSZ} {
-		resp, err := this.Client.GetCodeAll(exchange)
+		resp, err := c.GetCodeAll(exchange)
 		if err != nil {
 			return nil, err
 		}
@@ -288,7 +335,9 @@ func (this *Client) Code(byDatabase bool) ([]*Code, error) {
 
 // Quote 盘口信息
 func (this *Client) Quote(code string) (*protocol.Quote, error) {
-	resp, err := this.Client.GetQuote(code)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	resp, err := c.GetQuote(code)
 	if err != nil {
 		return nil, err
 	}
@@ -301,6 +350,9 @@ func (this *Client) Quote(code string) (*protocol.Quote, error) {
 // KlineReal 分钟实时获取
 func (this *Client) KlineReal(code string, cache Klines) (Klines, error) {
 
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+
 	last := &Kline{Unix: times.IntegerDay(time.Now()).Unix()}
 	if len(cache) > 0 {
 		last = cache[len(cache)-1]   //获取最后的数据,用于截止获取数据
@@ -310,7 +362,7 @@ func (this *Client) KlineReal(code string, cache Klines) (Klines, error) {
 	size := uint16(800)
 	list := Klines(nil)
 	for {
-		resp, err := this.Client.GetKlineMinute(code, 0, size)
+		resp, err := c.GetKlineMinute(code, 0, size)
 		if err != nil {
 			return cache, err
 		}
@@ -337,43 +389,63 @@ func (this *Client) KlineReal(code string, cache Klines) (Klines, error) {
 }
 
 func (this *Client) KlineMinute(code string) ([]*Kline, error) {
-	return this.kline("Minute", code, this.Client.GetKlineMinute)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("Minute", code, c.GetKlineMinute)
 }
 
 func (this *Client) Kline5Minute(code string) ([]*Kline, error) {
-	return this.kline("5Minute", code, this.Client.GetKline5Minute)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("5Minute", code, c.GetKline5Minute)
 }
 
 func (this *Client) Kline15Minute(code string) ([]*Kline, error) {
-	return this.kline("15Minute", code, this.Client.GetKline15Minute)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("15Minute", code, c.GetKline15Minute)
 }
 
 func (this *Client) Kline30Minute(code string) ([]*Kline, error) {
-	return this.kline("30Minute", code, this.Client.GetKline30Minute)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("30Minute", code, c.GetKline30Minute)
 }
 
 func (this *Client) KlineHour(code string) ([]*Kline, error) {
-	return this.kline("Hour", code, this.Client.GetKlineHour)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("Hour", code, c.GetKlineHour)
 }
 
 func (this *Client) KlineDay(code string) ([]*Kline, error) {
-	return this.kline("Day", code, this.Client.GetKlineDay)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("Day", code, c.GetKlineDay)
 }
 
 func (this *Client) KlineWeek(code string) ([]*Kline, error) {
-	return this.kline("Week", code, this.Client.GetKlineWeek)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("Week", code, c.GetKlineWeek)
 }
 
 func (this *Client) KlineMonth(code string) ([]*Kline, error) {
-	return this.kline("Month", code, this.Client.GetKlineMonth)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("Month", code, c.GetKlineMonth)
 }
 
 func (this *Client) KlineQuarter(code string) ([]*Kline, error) {
-	return this.kline("Quarter", code, this.Client.GetKlineQuarter)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("Quarter", code, c.GetKlineQuarter)
 }
 
 func (this *Client) KlineYear(code string) ([]*Kline, error) {
-	return this.kline("Year", code, this.Client.GetKlineYear)
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+	return this.kline("Year", code, c.GetKlineYear)
 }
 
 func (this *Client) kline(suffix, code string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) ([]*Kline, error) {
@@ -462,6 +534,9 @@ func (this *Client) Trade(code string, dates []string) ([]*Trade, error) {
 		return nil, nil
 	}
 
+	c := this.Pool.Get()
+	defer this.Pool.Put(c)
+
 	//1. 连接数据库
 	db, err := this.OpenDB(code, new(Trade))
 	if err != nil {
@@ -498,7 +573,7 @@ func (this *Client) Trade(code string, dates []string) ([]*Trade, error) {
 		if date < last.Date || (!full && date == last.Date) {
 			break
 		}
-		resp, err := this.Client.GetHistoryMinuteTradeAll(date, code)
+		resp, err := c.GetHistoryMinuteTradeAll(date, code)
 		if err != nil {
 			return nil, err
 		}

@@ -312,16 +312,13 @@ func NewTrade(code, date string, trace *protocol.HistoryMinuteTrade) *Trade {
 		Exchange: code[:2],
 		Code:     code[2:],
 		Date:     date,
-		Year:     conv.Int(date[:4]),
-		Month:    conv.Int(date[4:6]),
-		Day:      conv.Int(date[6:8]),
-		Hour:     conv.Int(trace.Time[:2]),
-		Minute:   conv.Int(trace.Time[3:5]),
+		Hour:     conv.Int8(trace.Time[:2]),
+		Minute:   conv.Int8(trace.Time[3:5]),
 		Second:   0,
 		Price:    trace.Price.Float64(),
 		Volume:   trace.Volume,
 		Number:   0,
-		Status:   trace.Status,
+		Status:   int8(trace.Status),
 	}
 }
 
@@ -331,14 +328,11 @@ type Trade struct {
 	Exchange string  `json:"exchange" xorm:"index"` //交易所
 	Code     string  `json:"code" xorm:"index"`     //代码
 	Date     string  `json:"date" xorm:"index"`     //日期
-	Year     int     `json:"year"`                  //年
-	Month    int     `json:"month"`                 //月
-	Day      int     `json:"day"`                   //日
-	Hour     int     `json:"hour"`                  //时
-	Minute   int     `json:"minute"`                //分
-	Second   int     `json:"second"`                //秒
+	Hour     int8    `json:"hour"`                  //时
+	Minute   int8    `json:"minute"`                //分
+	Second   int8    `json:"second"`                //秒,通达信没有秒
 	Price    float64 `json:"price"`                 //价格
 	Volume   int     `json:"volume"`                //成交量
 	Number   int     `json:"number"`                //成交笔数
-	Status   int     `json:"status"`                //成交状态,0是买，1是卖
+	Status   int8    `json:"status"`                //成交状态,0是买，1是卖
 }
