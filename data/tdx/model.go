@@ -60,6 +60,22 @@ type Code struct {
 
 /**/
 
+type Info struct {
+	ID                  int64  `json:"id"`                  //
+	Name                string `json:"name"`                //股票名称
+	UpdateKlineMinute   int64  `json:"updateKlineMinute"`   //分时K线更新时间
+	UpdateKline5Minute  int64  `json:"updateKline5Minute"`  //5分钟K线更新时间
+	UpdateKline15Minute int64  `json:"updateKline15Minute"` //15分钟K线更新时间
+	UpdateKline30Minute int64  `json:"updateKline30Minute"` //30分钟K线更新时间
+	UpdateKlineHour     int64  `json:"updateKlineHour"`     //小时K线更新时间
+	UpdateKlineDay      int64  `json:"updateKlineDay"`      //日K线更新时间
+	UpdateKlineWeek     int64  `json:"updateKlineWeek"`     //周K线更新时间
+	UpdateKlineMonth    int64  `json:"updateKlineMonth"`    //月K线更新时间
+	UpdateKlineQuarter  int64  `json:"updateKlineQuarter"`  //季K线更新时间
+	UpdateKlineYear     int64  `json:"updateKlineYear"`     //年K线更新时间
+	UpdateTrade         int64  `json:"updateTrade"`         //分时成交更新时间
+}
+
 // Update 记录更新时间,避免重复更新
 type Update struct {
 	ID            int64 `json:"id"`                    //主键
@@ -335,4 +351,13 @@ type Trade struct {
 	Volume   int     `json:"volume"`                //成交量
 	Number   int     `json:"number"`                //成交笔数
 	Status   int8    `json:"status"`                //成交状态,0是买，1是卖
+}
+
+/**/
+
+type Holiday struct {
+	ID      int64  `json:"id"`                    //主键
+	Date    string `json:"date"`                  //日期
+	Country string `json:"country"`               //国家
+	InDate  int64  `json:"inDate" xorm:"created"` //创建时间
 }

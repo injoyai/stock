@@ -3,6 +3,7 @@ package tdx
 import (
 	"errors"
 	"github.com/injoyai/base/safe"
+	"github.com/injoyai/goutil/g"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/tdx"
 )
@@ -64,4 +65,13 @@ func (this *Pool) Put(c *tdx.Client) {
 		return
 	case this.ch <- c:
 	}
+}
+
+func (this *Pool) Retry(f func(c *tdx.Client) error, retry int) error {
+	c, err := this.Get2()
+	if err != nil {
+		return err
+	}
+	defer this.Put(c)
+	return g.Retry(func() error { return f(c) }, retry)
 }
