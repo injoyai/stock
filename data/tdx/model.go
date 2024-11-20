@@ -355,9 +355,16 @@ type Trade struct {
 
 /**/
 
+// Holiday 节假日
 type Holiday struct {
 	ID      int64  `json:"id"`                    //主键
 	Date    string `json:"date"`                  //日期
 	Country string `json:"country"`               //国家
 	InDate  int64  `json:"inDate" xorm:"created"` //创建时间
+}
+
+// Workday 工作日
+type Workday struct {
+	Unix int64 `json:"unix"`
+	Is   bool  `json:"is"`
 }

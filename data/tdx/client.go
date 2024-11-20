@@ -8,7 +8,6 @@ import (
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/logs"
-	"github.com/injoyai/stock/data"
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
 	"github.com/robfig/cron/v3"
@@ -24,24 +23,18 @@ func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 
 	cli := &Client{}
 
-	//db, err := cli.OpenDB("update", new(Update))
-	//if err != nil {
-	//	return nil, err
-	//}
-	//co, err := db.Count(new(Update))
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if co == 0 {
-	//	_, err = db.Insert(new(Update))
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
+	//增加一个自用客户端,用于获取股票代码信息
+	c, err := tdx.DialWith(tdx.NewHostDial(hosts, 0), op...)
+	if err != nil {
+		return nil, err
+	}
+	db, err := cli.OpenDB("info", new(Info))
+	if err != nil {
+		return nil, err
+	}
+	cli.Workday = newWorkday(c, db)
 
-	var err error
-
-	//新建连接池
+	//新建连接池,
 	cli.Pool, err = NewPool(hosts, cap, func(c *client.Client) {
 		c.Logger.Debug()
 		c.SetRedial(true)
@@ -51,30 +44,28 @@ func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 		return nil, err
 	}
 
-	//判断是否是节假日
-	isHoliday, _ := data.TodayIsHoliday()
-	//判断是否获取股票信息
-	err = cli.UpdateCode(isHoliday)
-	if err != nil {
+	update := func() error {
+		//1. 更新工作日数据
+		err = cli.Workday.Update()
+		logs.PrintErr(err)
+		//2. 判断是否是节假日
+		isHoliday := cli.Workday.Is(time.Now().Unix())
+		if isHoliday {
+			return nil
+		}
+		//3. 更新代码信息
+		return cli.UpdateCode(isHoliday)
+	}
+
+	//启动更新一次
+	if err := update(); err != nil {
 		cli.Pool.Close()
 		return nil, err
 	}
 
 	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
 	cron.New(cron.WithSeconds()).AddFunc("0 0 4 * * *", func() {
-		//1. 判断是否是节假日
-		isHoliday, _ := data.TodayIsHoliday()
-		if isHoliday {
-			return
-		}
-
-		//2. 更新代码信息
-		err := cli.UpdateCode(isHoliday)
-		if err != nil {
-			logs.Err(err)
-			return
-		}
-
+		logs.PrintErr(update())
 	})
 
 	return cli, nil
@@ -84,10 +75,10 @@ func Dial(hosts []string, cap int, op ...client.Option) (*Client, error) {
 Client 客户端
 */
 type Client struct {
-	Pool   *Pool
-	Codes  map[string]*Code
-	codeDB *xorms.Engine //代码数据库实例
-	//*cron.Cron
+	Pool    *Pool
+	Codes   map[string]*Code
+	codeDB  *xorms.Engine //代码数据库实例
+	Workday *workday      //工作日
 }
 
 //func (this *Client) Do(f func(c *tdx.Client) error) error {
@@ -224,33 +215,14 @@ func (this *Client) GetCodeName(code string) string {
 	return "未知"
 }
 
-//// GetVar 实现接口
-//func (this *Client) GetVar(key string) *conv.Var {
-//	if this.updateDB == nil {
-//		return conv.Nil()
-//	}
-//	up := new(Update)
-//	if _, err := this.updateDB.Get(up); err != nil {
-//		return conv.Nil()
-//	}
-//	return up.GetVar(key)
-//}
-
-//// UpdateTime 更新时间,内部使用
-//func (this *Client) UpdateTime(key string) error {
-//	u := new(Update).Update(key)
-//	_, err := this.updateDB.Update(u)
-//	return err
-//}
-
 // OpenDB 打开数据库,内部使用
-func (this *Client) OpenDB(code string, entity any) (*xorms.Engine, error) {
+func (this *Client) OpenDB(code string, entity ...any) (*xorms.Engine, error) {
 	filename := "./database/" + code + ".db"
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {
 		return nil, err
 	}
-	if err := db.Sync(entity); err != nil {
+	if err := db.Sync(entity...); err != nil {
 		return nil, err
 	}
 	return db, nil
