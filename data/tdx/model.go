@@ -5,7 +5,6 @@ import (
 	"github.com/injoyai/stock/gui"
 	"github.com/injoyai/tdx/protocol"
 	"math"
-	"strings"
 	"time"
 )
 
@@ -61,94 +60,94 @@ type Code struct {
 /**/
 
 type Info struct {
-	ID                  int64  `json:"id"`                  //
-	Name                string `json:"name"`                //股票名称
-	UpdateKlineMinute   int64  `json:"updateKlineMinute"`   //分时K线更新时间
-	UpdateKline5Minute  int64  `json:"updateKline5Minute"`  //5分钟K线更新时间
-	UpdateKline15Minute int64  `json:"updateKline15Minute"` //15分钟K线更新时间
-	UpdateKline30Minute int64  `json:"updateKline30Minute"` //30分钟K线更新时间
-	UpdateKlineHour     int64  `json:"updateKlineHour"`     //小时K线更新时间
-	UpdateKlineDay      int64  `json:"updateKlineDay"`      //日K线更新时间
-	UpdateKlineWeek     int64  `json:"updateKlineWeek"`     //周K线更新时间
-	UpdateKlineMonth    int64  `json:"updateKlineMonth"`    //月K线更新时间
-	UpdateKlineQuarter  int64  `json:"updateKlineQuarter"`  //季K线更新时间
-	UpdateKlineYear     int64  `json:"updateKlineYear"`     //年K线更新时间
-	UpdateTrade         int64  `json:"updateTrade"`         //分时成交更新时间
+	ID            int64  `json:"id"`            //
+	Name          string `json:"name"`          //股票名称
+	KlineMinute   int64  `json:"klineMinute"`   //分时K线更新时间
+	Kline5Minute  int64  `json:"kline5Minute"`  //5分钟K线更新时间
+	Kline15Minute int64  `json:"kline15Minute"` //15分钟K线更新时间
+	Kline30Minute int64  `json:"kline30Minute"` //30分钟K线更新时间
+	KlineHour     int64  `json:"klineHour"`     //小时K线更新时间
+	KlineDay      int64  `json:"klineDay"`      //日K线更新时间
+	KlineWeek     int64  `json:"klineWeek"`     //周K线更新时间
+	KlineMonth    int64  `json:"klineMonth"`    //月K线更新时间
+	KlineQuarter  int64  `json:"klineQuarter"`  //季K线更新时间
+	KlineYear     int64  `json:"klineYear"`     //年K线更新时间
+	Trade         int64  `json:"trade"`         //分时成交更新时间
 }
 
-// Update 记录更新时间,避免重复更新
-type Update struct {
-	ID            int64 `json:"id"`                    //主键
-	Code          int64 `json:"code"`                  //代码更新时间
-	KlineMinute   int64 `json:"klineMinute"`           //1分钟K线
-	Kline5Minute  int64 `json:"kline5Minute"`          //5分钟K线
-	Kline15Minute int64 `json:"kline15Minute"`         //15分钟K线
-	Kline30Minute int64 `json:"kline30Minute"`         //30分钟K线
-	KlineHour     int64 `json:"klineHour"`             //小时K线
-	KlineDay      int64 `json:"klineDay"`              //日K线
-	KlineWeek     int64 `json:"klineWeek"`             //周K线
-	KlineMonth    int64 `json:"klineMonth"`            //月K线
-	KlineQuarter  int64 `json:"klineQuarter"`          //季K线
-	KlineYear     int64 `json:"klineYear"`             //年K线
-	InDate        int64 `json:"inDate" xorm:"created"` //创建时间
-}
-
-func (this *Update) GetVar(key string) *conv.Var {
-	switch strings.ToLower(key) {
-	case "code":
-		return conv.New(this.Code)
-	case "klineminute":
-		return conv.New(this.KlineMinute)
-	case "kline5minute":
-		return conv.New(this.Kline5Minute)
-	case "kline15minute":
-		return conv.New(this.Kline15Minute)
-	case "kline30minute":
-		return conv.New(this.Kline30Minute)
-	case "klinehour":
-		return conv.New(this.KlineHour)
-	case "klineday":
-		return conv.New(this.KlineDay)
-	case "klineweek":
-		return conv.New(this.KlineWeek)
-	case "klinemonth":
-		return conv.New(this.KlineMonth)
-	case "klinequarter":
-		return conv.New(this.KlineQuarter)
-	case "klineyear":
-		return conv.New(this.KlineYear)
-	default:
-		return conv.Nil()
-	}
-}
-
-func (this *Update) Update(key string) *Update {
-	switch strings.ToLower(key) {
-	case "code":
-		this.Code = time.Now().Unix()
-	case "klineminute":
-		this.KlineMinute = time.Now().Unix()
-	case "kline5minute":
-		this.Kline5Minute = time.Now().Unix()
-	case "kline15minute":
-		this.Kline15Minute = time.Now().Unix()
-	case "kline30minute":
-		this.Kline30Minute = time.Now().Unix()
-	case "klinehour":
-		this.KlineHour = time.Now().Unix()
-	case "klineday":
-		this.KlineDay = time.Now().Unix()
-	case "klineweek":
-		this.KlineWeek = time.Now().Unix()
-	case "klinemonth":
-		this.KlineMonth = time.Now().Unix()
-	case "klinequarter":
-		this.KlineQuarter = time.Now().Unix()
-	case "klineyear":
-		this.KlineYear = time.Now().Unix()
-	}
-	return this
-}
+//// Update 记录更新时间,避免重复更新
+//type Update struct {
+//	ID            int64 `json:"id"`                    //主键
+//	Code          int64 `json:"code"`                  //代码更新时间
+//	KlineMinute   int64 `json:"klineMinute"`           //1分钟K线
+//	Kline5Minute  int64 `json:"kline5Minute"`          //5分钟K线
+//	Kline15Minute int64 `json:"kline15Minute"`         //15分钟K线
+//	Kline30Minute int64 `json:"kline30Minute"`         //30分钟K线
+//	KlineHour     int64 `json:"klineHour"`             //小时K线
+//	KlineDay      int64 `json:"klineDay"`              //日K线
+//	KlineWeek     int64 `json:"klineWeek"`             //周K线
+//	KlineMonth    int64 `json:"klineMonth"`            //月K线
+//	KlineQuarter  int64 `json:"klineQuarter"`          //季K线
+//	KlineYear     int64 `json:"klineYear"`             //年K线
+//	InDate        int64 `json:"inDate" xorm:"created"` //创建时间
+//}
+//
+//func (this *Update) GetVar(key string) *conv.Var {
+//	switch strings.ToLower(key) {
+//	case "code":
+//		return conv.New(this.Code)
+//	case "klineminute":
+//		return conv.New(this.KlineMinute)
+//	case "kline5minute":
+//		return conv.New(this.Kline5Minute)
+//	case "kline15minute":
+//		return conv.New(this.Kline15Minute)
+//	case "kline30minute":
+//		return conv.New(this.Kline30Minute)
+//	case "klinehour":
+//		return conv.New(this.KlineHour)
+//	case "klineday":
+//		return conv.New(this.KlineDay)
+//	case "klineweek":
+//		return conv.New(this.KlineWeek)
+//	case "klinemonth":
+//		return conv.New(this.KlineMonth)
+//	case "klinequarter":
+//		return conv.New(this.KlineQuarter)
+//	case "klineyear":
+//		return conv.New(this.KlineYear)
+//	default:
+//		return conv.Nil()
+//	}
+//}
+//
+//func (this *Update) Update(key string) *Update {
+//	switch strings.ToLower(key) {
+//	case "code":
+//		this.Code = time.Now().Unix()
+//	case "klineminute":
+//		this.KlineMinute = time.Now().Unix()
+//	case "kline5minute":
+//		this.Kline5Minute = time.Now().Unix()
+//	case "kline15minute":
+//		this.Kline15Minute = time.Now().Unix()
+//	case "kline30minute":
+//		this.Kline30Minute = time.Now().Unix()
+//	case "klinehour":
+//		this.KlineHour = time.Now().Unix()
+//	case "klineday":
+//		this.KlineDay = time.Now().Unix()
+//	case "klineweek":
+//		this.KlineWeek = time.Now().Unix()
+//	case "klinemonth":
+//		this.KlineMonth = time.Now().Unix()
+//	case "klinequarter":
+//		this.KlineQuarter = time.Now().Unix()
+//	case "klineyear":
+//		this.KlineYear = time.Now().Unix()
+//	}
+//	return this
+//}
 
 /**/
 
@@ -365,6 +364,10 @@ type Holiday struct {
 
 // Workday 工作日
 type Workday struct {
-	Unix int64 `json:"unix"`
-	Is   bool  `json:"is"`
+	ID   int64  `json:"id"`
+	Unix int64  `json:"unix"`
+	Date string `json:"date"`
+	Is   bool   `json:"is"`
 }
+
+/**/

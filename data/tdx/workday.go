@@ -4,16 +4,18 @@ import (
 	"github.com/injoyai/base/maps"
 	"github.com/injoyai/goutil/database/xorms"
 	"github.com/injoyai/goutil/times"
+	"github.com/injoyai/logs"
 	"github.com/injoyai/tdx"
 	"time"
 )
 
-func newWorkday(c *tdx.Client, db *xorms.Engine) *workday {
-	return &workday{
+func newWorkday(c *tdx.Client, db *xorms.Engine) (*workday, error) {
+	w := &workday{
 		Client: c,
 		db:     db,
 		cache:  maps.NewBit(),
 	}
+	return w, w.db.Sync2(new(Workday))
 }
 
 type workday struct {
@@ -29,21 +31,27 @@ func (this *workday) Update() error {
 	lastWorkday := new(Workday)
 	has, err := this.db.Desc("ID").Get(lastWorkday)
 	if err != nil {
+		logs.Err(err)
 		return err
 	}
+	logs.Debug(*lastWorkday)
 	now := time.Now()
 	if !has || lastWorkday.Unix < times.IntegerDay(now).Unix() {
+		logs.Debug(666)
 		resp, err := this.Client.GetKlineDayAll("sz000001")
 		if err != nil {
 			return err
 		}
+		logs.Debug(667)
+		logs.Debug(resp.Count)
 		for _, v := range resp.List {
 			if unix := v.Time.Unix(); unix > lastWorkday.Unix {
-				_, err = this.db.Insert(&Workday{Unix: unix, Is: true})
+				_, err = this.db.Insert(&Workday{Unix: unix, Date: v.Time.Format("20060102"), Is: true})
 				if err != nil {
+					logs.Err(err)
 					return err
 				}
-				this.cache.Set(uint64(unix), true)
+				//this.cache.Set(uint64(unix), true)
 			}
 		}
 	}
@@ -51,6 +59,10 @@ func (this *workday) Update() error {
 }
 
 // Is 是否是工作日
-func (this *workday) Is(unix int64) bool {
-	return this.cache.Get(uint64(unix))
+func (this *workday) Is(t time.Time) bool {
+	return this.cache.Get(uint64(t.Unix()))
+}
+
+func (this *workday) TodayIs() bool {
+	return this.Is(time.Now())
 }
