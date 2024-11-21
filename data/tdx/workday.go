@@ -4,7 +4,6 @@ import (
 	"github.com/injoyai/base/maps"
 	"github.com/injoyai/goutil/database/xorms"
 	"github.com/injoyai/goutil/times"
-	"github.com/injoyai/logs"
 	"github.com/injoyai/tdx"
 	"time"
 )
@@ -31,27 +30,21 @@ func (this *workday) Update() error {
 	lastWorkday := new(Workday)
 	has, err := this.db.Desc("ID").Get(lastWorkday)
 	if err != nil {
-		logs.Err(err)
 		return err
 	}
-	logs.Debug(*lastWorkday)
 	now := time.Now()
 	if !has || lastWorkday.Unix < times.IntegerDay(now).Unix() {
-		logs.Debug(666)
 		resp, err := this.Client.GetKlineDayAll("sz000001")
 		if err != nil {
 			return err
 		}
-		logs.Debug(667)
-		logs.Debug(resp.Count)
 		for _, v := range resp.List {
 			if unix := v.Time.Unix(); unix > lastWorkday.Unix {
 				_, err = this.db.Insert(&Workday{Unix: unix, Date: v.Time.Format("20060102"), Is: true})
 				if err != nil {
-					logs.Err(err)
 					return err
 				}
-				//this.cache.Set(uint64(unix), true)
+				this.cache.Set(uint64(unix), true)
 			}
 		}
 	}
