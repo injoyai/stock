@@ -12,17 +12,18 @@ func main() {
 	//连接客户端
 	c, err := tdx.Dial(tdx.Hosts, 10)
 	logs.PanicErr(err)
+	c.Database = "./database2/"
 
 	codes := []string{"sz000005"}
 
 	//更新数据
-	logs.PrintErr(c.UpdateCodes2(codes, false))
+	logs.PrintErr(c.UpdateCodes(codes, false))
 
 	//每天下午16点进行数据更新
 	common.Corn.SetTask("update", "0 0 16 * * *", func() {
 		isHoliday, err := data.TodayIsHoliday()
 		logs.PanicErr(err)
-		logs.PrintErr(c.UpdateCodes2(c.GetStockCodes(), isHoliday))
+		logs.PrintErr(c.UpdateCodes(c.GetStockCodes(), isHoliday))
 	})
 
 	//等待客户端退出

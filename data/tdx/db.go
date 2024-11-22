@@ -28,7 +28,6 @@ func NewDB(dir, code string) (*DB, error) {
 		NewKlineTable("Day"),
 		NewKlineTable("Week"),
 		NewKlineTable("Month"),
-		NewKlineTable("Month"),
 		NewKlineTable("Quarter"),
 		NewKlineTable("Year"),
 	); err != nil {
@@ -45,7 +44,7 @@ func NewDB(dir, code string) (*DB, error) {
 		}
 	}
 
-	return &DB{db: db}, nil
+	return &DB{dir: dir, code: code, db: db}, nil
 }
 
 type DB struct {
@@ -144,6 +143,7 @@ func (this *DB) kline(suffix, code string, get func(code string, start, count ui
 
 	//1. 连接数据库
 	table := NewKlineTable(suffix)
+	logs.Debug(table.TableName())
 
 	//2. 查询数据库的数据
 	cache := []*Kline(nil)
@@ -206,10 +206,16 @@ func (this *DB) kline(suffix, code string, get func(code string, start, count ui
 	cache = append(cache, list...)
 
 	//5. 更新K线入库的时间,避免重复从服务器拉取,失败问题也不大
-	_, err = this.db.Table(table).Update(map[string]int64{table.tableName: time.Now().Unix()})
+	_, err = this.db.Table("Info").Update(map[string]int64{table.tableName: time.Now().Unix()})
 	logs.PrintErr(err)
 
 	return cache, nil
+}
+
+func (this *DB) getInfo() (*Info, error) {
+	info := new(Info)
+	_, err := this.db.Get(info)
+	return info, err
 }
 
 /*
@@ -221,8 +227,6 @@ func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*Trade, err
 	if len(dates) == 0 {
 		return nil, nil
 	}
-
-	//1. 连接数据库
 
 	//2. 查询最后的数据时间
 	last := new(Trade)
