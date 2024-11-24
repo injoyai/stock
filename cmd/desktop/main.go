@@ -2,52 +2,57 @@ package main
 
 import (
 	"github.com/injoyai/conv"
+	"github.com/injoyai/conv/cfg/v2"
 	"github.com/injoyai/goutil/notice"
+	"github.com/injoyai/goutil/oss"
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/data/tdx"
 	"github.com/robfig/cron/v3"
+	"path/filepath"
 )
 
 func init() {
 	logs.SetShowColor(false)
+	cfg.Init(cfg.WithFile(filepath.Join(oss.ExecDir(), "/config/config.yaml")))
 }
 
 func main() {
 
 	Run(
 		func(s *Stray) {
-			task := cron.New(cron.WithSeconds())
-
-			//连接客户端
-			c, err := tdx.Dial(&tdx.Config{
-				Cap:      10,
-				Database: "./database/",
-			})
-			logs.PanicErr(err)
-
-			//每天下午16点进行数据更新
-			task.AddFunc("0 0 16 * * *", func() {
-				if c.Workday.TodayIs() {
-					notice.DefaultWindows.Publish(&notice.Message{
-						Content: "开始更新数据...",
-					})
-					err = update(c, c.GetStockCodes())
-					logs.PrintErr(err)
-				}
-			})
-
-			//定时输出到csv
-			task.AddFunc("0 0 18 * * *", func() {
-
-			})
-
 			go func() {
+				task := cron.New(cron.WithSeconds())
+
+				//连接客户端
+				c, err := tdx.Dial(&tdx.Config{
+					Hosts:    cfg.GetStrings("hosts"),
+					Cap:      cfg.GetInt("cap", 10),
+					Database: cfg.GetString("database", "./database/"),
+					Workday:  cfg.GetString("workday", "workday"),
+				})
+				logs.PanicErr(err)
+
+				//每天下午16点进行数据更新
+				task.AddFunc("0 0 16 * * *", func() {
+					if c.Workday.TodayIs() {
+						notice.DefaultWindows.Publish(&notice.Message{
+							Content: "开始更新数据...",
+						})
+						err = update(c, c.GetStockCodes())
+						logs.PrintErr(err)
+					}
+				})
+
+				//定时输出到csv
+				task.AddFunc("0 0 18 * * *", func() {
+
+				})
+
 				codes := c.GetStockCodes()
 
 				//更新数据
 				logs.PrintErr(update(c, codes))
 			}()
-
 		},
 		WithLabel("版本: v0.0.1"),
 		WithStartup(),
