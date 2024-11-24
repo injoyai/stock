@@ -24,7 +24,7 @@ func NewPool(hosts []string, cap int, op ...client.Option) (*Pool, error) {
 		return nil
 	})
 	for i := 0; i < cap; i++ {
-		c, err := tdx.DialWith(tdx.NewHostDial(hosts, 0), op...)
+		c, err := tdx.DialWith(tdx.NewHostDial(hosts), op...)
 		if err != nil {
 			p.Close()
 			return nil, err
@@ -42,12 +42,7 @@ type Pool struct {
 	*safe.Closer
 }
 
-func (this *Pool) Get() *tdx.Client {
-	c := <-this.ch
-	return c
-}
-
-func (this *Pool) Get2() (*tdx.Client, error) {
+func (this *Pool) Get() (*tdx.Client, error) {
 	select {
 	case <-this.Done():
 		return nil, this.Err()
@@ -67,8 +62,17 @@ func (this *Pool) Put(c *tdx.Client) {
 	}
 }
 
-func (this *Pool) Retry(f func(c *tdx.Client) error, retry int) error {
-	c, err := this.Get2()
+func (this *Pool) Do(f func(c *tdx.Client) error) error {
+	c, err := this.Get()
+	if err != nil {
+		return err
+	}
+	defer this.Put(c)
+	return f(c)
+}
+
+func (this *Pool) Retry(f func(c *Cli) error, retry int) error {
+	c, err := this.Get()
 	if err != nil {
 		return err
 	}

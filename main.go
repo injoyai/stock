@@ -3,27 +3,25 @@ package main
 import (
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/common"
-	"github.com/injoyai/stock/data"
 	"github.com/injoyai/stock/data/tdx"
 )
 
 func main() {
 
 	//连接客户端
-	c, err := tdx.Dial(tdx.Hosts, 10)
+	c, err := tdx.Dial(&tdx.Config{Cap: 10, Database: "./database2/"})
 	logs.PanicErr(err)
-	c.Database = "./database2/"
 
-	codes := []string{"sz000005"}
+	codes := []string{"sz000001"}
 
 	//更新数据
-	logs.PrintErr(c.UpdateCodes(codes, false))
+	logs.PrintErr(c.UpdateCodes(codes))
 
 	//每天下午16点进行数据更新
 	common.Corn.SetTask("update", "0 0 16 * * *", func() {
-		isHoliday, err := data.TodayIsHoliday()
-		logs.PanicErr(err)
-		logs.PrintErr(c.UpdateCodes(c.GetStockCodes(), isHoliday))
+		if c.Workday.TodayIs() {
+			logs.PrintErr(c.UpdateCodes(c.GetStockCodes()))
+		}
 	})
 
 	//等待客户端退出

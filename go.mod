@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/getlantern/systray v1.2.2
+	github.com/go-ole/go-ole v1.2.6
 	github.com/injoyai/base v1.0.19
 	github.com/injoyai/conv v1.1.10
 	github.com/injoyai/goutil v0.0.0-20241025081340-4c273eb70b01
@@ -12,7 +13,7 @@ require (
 	github.com/injoyai/logs v1.0.9
 	github.com/injoyai/lorca v0.0.0-20230816093842-66a8b4247238
 	github.com/injoyai/notice v0.0.1
-	github.com/injoyai/tdx v0.0.1
+	github.com/injoyai/tdx v0.0.2
 	github.com/robfig/cron/v3 v3.0.1
 	xorm.io/xorm v1.3.2
 )
@@ -37,7 +38,6 @@ require (
 	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
 	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
 	github.com/glebarez/go-sqlite v1.21.1 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/go-toast/toast v0.0.0-20190211030409-01e6764cf0a4 // indirect

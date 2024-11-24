@@ -28,7 +28,7 @@ func main() {
 	}
 
 	//连接客户端
-	c, err := tdx.Dial(tdx.Hosts, 1, func(c *client.Client) {
+	c, err := tdx.Dial(&tdx.Config{}, func(c *client.Client) {
 		c.Logger.Debug(false)
 	})
 	logs.PanicErr(err)
@@ -39,29 +39,36 @@ func main() {
 		Html:   gui.ChartHtml,
 	}, func(app lorca.APP) error {
 
-		quote, err := c.Quote(code)
-		if err != nil {
-			return err
-		}
+		return c.WithOpenDB(code, func(db *tdx.DB) error {
 
-		for range g.Interval(time.Second * 2) {
-			select {
-			case <-app.Done():
-				return nil
-
-			default:
-				ls, err := c.KlineReal(code, nil)
+			return c.Pool.Retry(func(cli *tdx.Cli) error {
+				quote, err := db.Quote(cli)
 				if err != nil {
-					logs.Err(err)
-					continue
+					return err
 				}
-				data := ls.ChartDay(quote.K.Last.Float64(), c.GetCodeName(code))
-				data.Init()
-				app.Eval(fmt.Sprintf("loading(%s,%f,%f)", conv.String(data), data.Min, data.Max))
 
-			}
-		}
+				for ; ; <-time.After(time.Second * 2) {
+					select {
+					case <-app.Done():
+						return nil
 
-		return nil
+					default:
+						ls, err := c.KlineReal(code, nil)
+						if err != nil {
+							logs.Err(err)
+							continue
+						}
+						data := ls.ChartDay(quote.K.Last.Float64(), c.GetCodeName(code))
+						data.Init()
+						app.Eval(fmt.Sprintf("loading(%s,%f,%f)", conv.String(data), data.Min, data.Max))
+
+					}
+				}
+
+			}, 1)
+
+			return nil
+		})
+
 	})
 }

@@ -1,6 +1,7 @@
 package tdx
 
 import (
+	"errors"
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/database/xorms"
 	"github.com/injoyai/logs"
@@ -18,7 +19,7 @@ func NewDB(dir, code string) (*DB, error) {
 		return nil, err
 	}
 	if err = db.Sync2(
-		new(Info),
+		new(Update),
 		new(Trade),
 		NewKlineTable("Minute"),
 		NewKlineTable("5Minute"),
@@ -34,12 +35,12 @@ func NewDB(dir, code string) (*DB, error) {
 		return nil, err
 	}
 
-	co, err := db.Count(new(Info))
+	co, err := db.Count(new(Update))
 	if err != nil {
 		return nil, err
 	}
 	if co == 0 {
-		if _, err = db.Insert(new(Info)); err != nil {
+		if _, err = db.Insert(new(Update)); err != nil {
 			return nil, err
 		}
 	}
@@ -53,30 +54,34 @@ type DB struct {
 	db   *xorms.Engine
 }
 
+func (this *DB) AllKlineHandler() []func(c *tdx.Client) ([]*Kline, error) {
+	return []func(c *Cli) ([]*Kline, error){
+		this.KlineMinute,
+		this.Kline5Minute,
+		this.Kline15Minute,
+		this.Kline30Minute,
+		this.KlineHour,
+		this.KlineDay,
+		this.KlineWeek,
+		this.KlineMonth,
+		this.KlineQuarter,
+		this.KlineYear,
+	}
+}
+
 func (this *DB) Close() error {
 	return this.db.Close()
 }
 
 // Update 更新数据
 func (this *DB) Update(c *tdx.Client) error {
-	for _, f := range []func(c *tdx.Client, code string) ([]*Kline, error){
-		this.KlineMinute,
-		this.Kline5Minute,
-		this.Kline15Minute,
-		this.Kline30Minute,
-		this.KlineHour,
-		//this.KlineDay,
-		this.KlineWeek,
-		this.KlineMonth,
-		this.KlineQuarter,
-		this.KlineYear,
-	} {
-		if _, err := f(c, this.code); err != nil {
+	for _, f := range this.AllKlineHandler() {
+		if _, err := f(c); err != nil {
 			return err
 		}
 	}
 
-	klines, err := this.KlineDay(c, this.code)
+	klines, err := this.KlineDay(c)
 	if err != nil {
 		return err
 	}
@@ -93,57 +98,69 @@ func (this *DB) Update(c *tdx.Client) error {
 }
 
 // GetInfo 获取信息
-func (this *DB) GetInfo() (*Info, error) {
-	info := new(Info)
+func (this *DB) GetInfo() (*Update, error) {
+	info := new(Update)
 	_, err := this.db.Get(info)
 	return info, err
 }
 
-func (this *DB) KlineMinute(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("Minute", code, c.GetKlineMinute)
+// Quote 盘口信息
+func (this *DB) Quote(c *tdx.Client) (*protocol.Quote, error) {
+	resp, err := c.GetQuote(this.code)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, errors.New("not found")
+	}
+	return resp[0], nil
 }
 
-func (this *DB) Kline5Minute(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("5Minute", code, c.GetKline5Minute)
+func (this *DB) KlineMinute(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("Minute", c.GetKlineMinute)
 }
 
-func (this *DB) Kline15Minute(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("15Minute", code, c.GetKline15Minute)
+func (this *DB) Kline5Minute(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("5Minute", c.GetKline5Minute)
 }
 
-func (this *DB) Kline30Minute(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("30Minute", code, c.GetKline30Minute)
+func (this *DB) Kline15Minute(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("15Minute", c.GetKline15Minute)
 }
 
-func (this *DB) KlineHour(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("Hour", code, c.GetKlineHour)
+func (this *DB) Kline30Minute(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("30Minute", c.GetKline30Minute)
 }
 
-func (this *DB) KlineDay(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("Day", code, c.GetKlineDay)
+func (this *DB) KlineHour(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("Hour", c.GetKlineHour)
 }
 
-func (this *DB) KlineWeek(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("Week", code, c.GetKlineWeek)
+func (this *DB) KlineDay(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("Day", c.GetKlineDay)
 }
 
-func (this *DB) KlineMonth(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("Month", code, c.GetKlineMonth)
+func (this *DB) KlineWeek(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("Week", c.GetKlineWeek)
 }
 
-func (this *DB) KlineQuarter(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("Quarter", code, c.GetKlineQuarter)
+func (this *DB) KlineMonth(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("Month", c.GetKlineMonth)
 }
 
-func (this *DB) KlineYear(c *tdx.Client, code string) ([]*Kline, error) {
-	return this.kline("Year", code, c.GetKlineYear)
+func (this *DB) KlineQuarter(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("Quarter", c.GetKlineQuarter)
 }
 
-func (this *DB) kline(suffix, code string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) ([]*Kline, error) {
+func (this *DB) KlineYear(c *tdx.Client) ([]*Kline, error) {
+	return this.kline("Year", c.GetKlineYear)
+}
+
+func (this *DB) kline(suffix string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) ([]*Kline, error) {
 
 	//1. 连接数据库
 	table := NewKlineTable(suffix)
-	logs.Debug(table.TableName())
+	logs.Debug("更新:", table.TableName())
 
 	//2. 查询数据库的数据
 	cache := []*Kline(nil)
@@ -162,7 +179,7 @@ func (this *DB) kline(suffix, code string, get func(code string, start, count ui
 	list := []*Kline(nil)
 	size := uint16(800)
 	for start := uint16(0); ; start += size {
-		resp, err := get(code, start, size)
+		resp, err := get(this.code, start, size)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +188,7 @@ func (this *DB) kline(suffix, code string, get func(code string, start, count ui
 		ls := []*Kline(nil)
 		for _, v := range resp.List {
 			if last.Unix <= v.Time.Unix() {
-				ls = append(ls, NewKline(code, v))
+				ls = append(ls, NewKline(this.code, v))
 			} else {
 				done = true
 			}
@@ -206,14 +223,14 @@ func (this *DB) kline(suffix, code string, get func(code string, start, count ui
 	cache = append(cache, list...)
 
 	//5. 更新K线入库的时间,避免重复从服务器拉取,失败问题也不大
-	_, err = this.db.Table("Info").Update(map[string]int64{table.tableName: time.Now().Unix()})
+	_, err = this.db.Table("Update").Update(map[string]int64{table.tableName: time.Now().Unix()})
 	logs.PrintErr(err)
 
 	return cache, nil
 }
 
-func (this *DB) getInfo() (*Info, error) {
-	info := new(Info)
+func (this *DB) getInfo() (*Update, error) {
+	info := new(Update)
 	_, err := this.db.Get(info)
 	return info, err
 }

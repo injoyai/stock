@@ -2,39 +2,43 @@ package main
 
 import (
 	"github.com/injoyai/conv"
-	"github.com/injoyai/goutil/task"
+	"github.com/injoyai/goutil/notice"
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/data/tdx"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
 
 	Run(
 		func(s *Stray) {
-			corn := task.New()
-			mu := s.AddMenu().Disable().SetName("日志")
-			_ = corn
-			_ = mu
+			task := cron.New(cron.WithSeconds())
 
 			//连接客户端
-			c, err := tdx.Dial(tdx.Hosts, 10)
+			c, err := tdx.Dial(&tdx.Config{Cap: 10, Database: "./database2/"})
 			logs.PanicErr(err)
-			c.Database = "./dataabase2/"
 
 			//每天下午16点进行数据更新
-			corn.SetTask("update", "0 0 16 * * *", func() {
-				isWorkday := c.Workday.TodayIs()
-				logs.PanicErr(err)
-				logs.PrintErr(update(c, mu, c.GetStockCodes(), !isWorkday))
-				mu.SetName(corn.GetTask("update").Next.String())
+			task.AddFunc("0 0 16 * * *", func() {
+				if c.Workday.TodayIs() {
+					notice.DefaultWindows.Publish(&notice.Message{
+						Content: "开始更新数据...",
+					})
+					err = update(c, c.GetStockCodes())
+					logs.PrintErr(err)
+				}
+			})
+
+			//定时输出到csv
+			task.AddFunc("0 0 18 * * *", func() {
+
 			})
 
 			go func() {
 				codes := c.GetStockCodes()
 
 				//更新数据
-				logs.PrintErr(update(c, mu, codes, false))
-				mu.SetName(corn.GetTask("update").Next.String())
+				logs.PrintErr(update(c, codes))
 			}()
 
 		},
@@ -45,48 +49,25 @@ func main() {
 
 }
 
-func update(c *tdx.Client, mu *Menu, codes []string, isHoliday bool, retrys ...int) error {
+func update(c *tdx.Client, codes []string, retrys ...int) error {
 
 	retry := conv.DefaultInt(3, retrys...)
 
-	//1. 判断是否是节假日
-	if isHoliday {
-		return nil
-	}
-
-	mu.SetName("数据拉取中...")
+	logs.Info("开始更新数据...")
 
 	//2. 遍历全部股票
-	for _, v := range codes {
+	for i := range codes {
 		//3. 进行按股票进行每日更新,并尝试重试
-		code := v
-
-		db, err := c.DB(code)
-		if err != nil {
-			return err
-		}
-
-		for _, f := range []func(c *tdx.Cli, code string) ([]*tdx.Kline, error){
-			db.KlineMinute,
-			db.Kline5Minute,
-			db.Kline15Minute,
-			db.Kline30Minute,
-			db.KlineHour,
-			db.KlineDay,
-			db.KlineWeek,
-			db.KlineMonth,
-			db.KlineQuarter,
-			db.KlineYear,
-		} {
-			go c.Pool.Retry(func(c *tdx.Cli) error {
-				_, err := f(c, code)
-				logs.PrintErr(err)
-				return err
-			}, retry)
-
-		}
-		db.Close()
-
+		code := codes[i]
+		go c.Pool.Retry(func(cli *tdx.Cli) error {
+			return c.WithOpenDB(code, func(db *tdx.DB) error {
+				for _, v := range db.AllKlineHandler() {
+					_, err := v(cli)
+					logs.PrintErr(err)
+				}
+				return nil
+			})
+		}, retry)
 	}
 
 	return nil
