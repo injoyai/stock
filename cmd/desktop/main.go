@@ -8,6 +8,10 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+func init() {
+	logs.SetShowColor(false)
+}
+
 func main() {
 
 	Run(
@@ -15,7 +19,10 @@ func main() {
 			task := cron.New(cron.WithSeconds())
 
 			//连接客户端
-			c, err := tdx.Dial(&tdx.Config{Cap: 10, Database: "./database2/"})
+			c, err := tdx.Dial(&tdx.Config{
+				Cap:      10,
+				Database: "./stock/database/",
+			})
 			logs.PanicErr(err)
 
 			//每天下午16点进行数据更新
@@ -42,6 +49,7 @@ func main() {
 			}()
 
 		},
+		WithLabel("版本: v0.0.1"),
 		WithStartup(),
 		WithSeparator(),
 		WithExit(),

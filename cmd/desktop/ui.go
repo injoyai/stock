@@ -12,6 +12,12 @@ import (
 
 type Option func(s *Stray)
 
+func WithLabel(name string) Option {
+	return func(s *Stray) {
+		s.AddMenu().SetName(name).Disable()
+	}
+}
+
 func WithStartup() Option {
 	return func(s *Stray) {
 		filename := oss.ExecName()
