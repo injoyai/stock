@@ -21,7 +21,7 @@ func main() {
 			//连接客户端
 			c, err := tdx.Dial(&tdx.Config{
 				Cap:      10,
-				Database: "./stock/database/",
+				Database: "./database/",
 			})
 			logs.PanicErr(err)
 
