@@ -6,6 +6,7 @@ import (
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/tdx"
 	"time"
+	"xorm.io/xorm"
 )
 
 func newWorkday(c *tdx.Client, db *xorms.Engine) (*workday, error) {
@@ -38,15 +39,20 @@ func (this *workday) Update() error {
 		if err != nil {
 			return err
 		}
-		for _, v := range resp.List {
-			if unix := v.Time.Unix(); unix > lastWorkday.Unix {
-				_, err = this.db.Insert(&Workday{Unix: unix, Date: v.Time.Format("20060102"), Is: true})
-				if err != nil {
-					return err
+
+		this.db.SessionFunc(func(session *xorm.Session) error {
+			for _, v := range resp.List {
+				if unix := v.Time.Unix(); unix > lastWorkday.Unix {
+					_, err = session.Insert(&Workday{Unix: unix, Date: v.Time.Format("20060102"), Is: true})
+					if err != nil {
+						return err
+					}
+					this.cache.Set(uint64(unix), true)
 				}
-				this.cache.Set(uint64(unix), true)
 			}
-		}
+			return nil
+		})
+
 	}
 	return nil
 }
