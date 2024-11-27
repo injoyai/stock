@@ -87,7 +87,7 @@ func Dial(cfg *Config, op ...client.Option) (*Client, error) {
 		return nil, err
 	}
 
-	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
+	//每天8点更新代码信息,比如新增了股票,或者股票改了名字
 	cron.New(cron.WithSeconds()).AddFunc("0 0 8 * * *", func() {
 		logs.PrintErr(update(false))
 	})

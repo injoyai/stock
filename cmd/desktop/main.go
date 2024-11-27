@@ -58,6 +58,7 @@ func main() {
 		WithStartup(),
 		WithSeparator(),
 		WithExit(),
+		WithHint("定时拉取股票信息"),
 	)
 
 }

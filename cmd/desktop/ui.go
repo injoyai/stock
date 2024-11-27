@@ -59,6 +59,12 @@ func WithExit() Option {
 	}
 }
 
+func WithHint(hint string) Option {
+	return func(s *Stray) {
+		s.SetHint(hint)
+	}
+}
+
 func Run(op ...Option) <-chan struct{} {
 	s := &Stray{
 		Closer: safe.NewCloser(),
