@@ -88,7 +88,7 @@ func Dial(cfg *Config, op ...client.Option) (*Client, error) {
 	}
 
 	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
-	cron.New(cron.WithSeconds()).AddFunc("0 0 1 * * *", func() {
+	cron.New(cron.WithSeconds()).AddFunc("0 0 8 * * *", func() {
 		logs.PrintErr(update(false))
 	})
 
@@ -147,17 +147,6 @@ func (this *Client) GetStockCodes() []string {
 				}
 			}
 		}
-	}
-	return ls
-}
-
-// GetCodes 获取所有代码
-func (this *Client) GetCodes() []string {
-	ls := make([]string, len(this.Codes))
-	i := 0
-	for k, _ := range this.Codes {
-		ls[i] = k
-		i++
 	}
 	return ls
 }
