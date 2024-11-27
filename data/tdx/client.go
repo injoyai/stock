@@ -71,29 +71,25 @@ func Dial(cfg *Config, op ...client.Option) (*Client, error) {
 		return nil, err
 	}
 
-	update := func() error {
-
+	update := func(must bool) error {
 		//1. 更新工作日数据
 		logs.Debug("更新: 工作日数据")
 		err = cli.Workday.Update()
 		logs.PrintErr(err)
-
-		//3. 更新代码信息
+		//2. 更新代码信息
 		logs.Debug("更新: 代码信息")
-		return cli.UpdateCode(false)
+		return cli.UpdateCode(!must && !cli.Workday.TodayIs())
 	}
 
 	//启动更新一次
-	if err := update(); err != nil {
+	if err := update(true); err != nil {
 		cli.Pool.Close()
 		return nil, err
 	}
 
 	//每天4点更新代码信息,比如新增了股票,或者股票改了名字
 	cron.New(cron.WithSeconds()).AddFunc("0 0 1 * * *", func() {
-		if cli.Workday.TodayIs() {
-			logs.PrintErr(update())
-		}
+		logs.PrintErr(update(false))
 	})
 
 	return cli, nil
