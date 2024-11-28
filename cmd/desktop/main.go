@@ -26,7 +26,7 @@ func main() {
 				//连接客户端
 				c, err := tdx.Dial(&tdx.Config{
 					Hosts:    cfg.GetStrings("hosts"),
-					Cap:      cfg.GetInt("cap", 10),
+					Cap:      cfg.GetInt("cap", 50),
 					Database: cfg.GetString("database", "./database/"),
 					Workday:  cfg.GetString("workday", "workday"),
 				})
