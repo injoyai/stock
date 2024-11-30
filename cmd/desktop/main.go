@@ -8,16 +8,17 @@ import (
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/data/tdx"
 	"github.com/robfig/cron/v3"
-	"os"
 	"path/filepath"
 	"strings"
 )
 
 var (
 	DefaultDatabase = func() string {
-		execName, _ := os.Executable()
+		execName := oss.ExecDir()
 		switch {
 		case strings.HasPrefix(execName, "C:\\Users"):
+			//默认IDE缓存的地方,则读取代码位置的配置
+			//C:\Users\Admin\AppData\Local\JetBrains\GoLand2024.1\tmp\GoLand\___1go_build_github_com_injoyai_stock_cmd_desktop.exe
 			execName = "./"
 		}
 		return filepath.Join(filepath.Dir(execName), "/database")

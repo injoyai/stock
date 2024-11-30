@@ -1090,7 +1090,6 @@ github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANyt
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d h1:/WZQPMZNsjZ7IlCpsLGdQBINg5bxKQ1K1sh6awxLtkA=
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d/go.mod h1:qj24IKcXYK6Iy9ceXlo3Tc+vtHo9lIhSX5JddghvEPo=
 github.com/injoyai/base v1.0.6/go.mod h1:JtIjMb07LDnhyOaSr4PUstpLOxMRsZVk/PUrNdNkJq8=
-github.com/injoyai/base v1.0.15/go.mod h1:2JSv8ndJ/FmKyazfhDBewzylEbVfJV0EE/r6kOvnzwU=
 github.com/injoyai/base v1.0.19 h1:GcOG3U5tWzBowR4Cl9ezmPgXljOTCnsOM9fuGDR4qyw=
 github.com/injoyai/base v1.0.19/go.mod h1:2JSv8ndJ/FmKyazfhDBewzylEbVfJV0EE/r6kOvnzwU=
 github.com/injoyai/conv v1.0.4/go.mod h1:rqBoiZt/YSKjGYEH4F6z+56djYLFkgKt/kWK5/1X640=
@@ -1099,8 +1098,8 @@ github.com/injoyai/conv v1.0.6/go.mod h1:rqBoiZt/YSKjGYEH4F6z+56djYLFkgKt/kWK5/1
 github.com/injoyai/conv v1.1.5/go.mod h1:PYoJcbqaz4eyQUovzErRFCuDSPGB4L07AvdmFsTrTew=
 github.com/injoyai/conv v1.1.10 h1:LefmOA4SKTEw6gGHXZ6UT8n2K+OzCttYSW8lVmvgQd8=
 github.com/injoyai/conv v1.1.10/go.mod h1:PYoJcbqaz4eyQUovzErRFCuDSPGB4L07AvdmFsTrTew=
-github.com/injoyai/goutil v0.0.0-20241025081340-4c273eb70b01 h1:dwjPj0MesXMWs3kFMp/Ryjd5fAx7wZHQK4icTwQoHmg=
-github.com/injoyai/goutil v0.0.0-20241025081340-4c273eb70b01/go.mod h1:lXrP8bGSoueX7sBniT5pZctp1e2z3cVZYVeRrjQSKoc=
+github.com/injoyai/goutil v0.0.0-20241130143917-adc54f5fc341 h1:cT+q8Kz+kUL0G8bfLbaC5IU6LbwGJOyJlnu4kjlwL1A=
+github.com/injoyai/goutil v0.0.0-20241130143917-adc54f5fc341/go.mod h1:+e38ObWBWxI+Bm/jwXAHx+ZGWNxMeHeroRMrimDwhj4=
 github.com/injoyai/io v0.1.8 h1:C+pt2LLUNhCu80EVuzCs6+vetHf6Ny5ANAIOH8QUAco=
 github.com/injoyai/io v0.1.8/go.mod h1:khts/5VvSJVm8Dl1fp0C+D8L0pmRrXtWsp+SJqlTgpw=
 github.com/injoyai/ios v0.0.4 h1:yEZ6wN5uCSjAJB4qwpT6R77aMtjkblZo4giKwu9/s7Y=
