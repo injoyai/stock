@@ -8,7 +8,20 @@ import (
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/data/tdx"
 	"github.com/robfig/cron/v3"
+	"os"
 	"path/filepath"
+	"strings"
+)
+
+var (
+	DefaultDatabase = func() string {
+		execName, _ := os.Executable()
+		switch {
+		case strings.HasPrefix(execName, "C:\\Users"):
+			execName = "./"
+		}
+		return filepath.Join(filepath.Dir(execName), "/database")
+	}()
 )
 
 func init() {
@@ -27,7 +40,7 @@ func main() {
 				c, err := tdx.Dial(&tdx.Config{
 					Hosts:    cfg.GetStrings("hosts"),
 					Cap:      cfg.GetInt("cap", 50),
-					Database: cfg.GetString("database", "./database/"),
+					Database: cfg.GetString("database", DefaultDatabase),
 					Workday:  cfg.GetString("workday", "workday"),
 				})
 				logs.PanicErr(err)
@@ -54,7 +67,7 @@ func main() {
 				logs.PrintErr(update(c, codes))
 			}()
 		},
-		WithLabel("版本: v0.0.1"),
+		WithLabel("版本: v0.0.2"),
 		WithStartup(),
 		WithSeparator(),
 		WithExit(),

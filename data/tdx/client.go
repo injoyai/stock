@@ -11,6 +11,7 @@ import (
 	"github.com/injoyai/tdx/protocol"
 	"github.com/robfig/cron/v3"
 	"os"
+	"path/filepath"
 	"time"
 	"xorm.io/xorm"
 )
@@ -161,7 +162,7 @@ func (this *Client) GetCodeName(code string) string {
 
 // OpenDB 打开数据库,内部使用
 func (this *Client) OpenDB(code string, entity ...any) (*xorms.Engine, error) {
-	filename := this.Cfg.Database + code + ".db"
+	filename := filepath.Join(this.Cfg.Database, code+".db")
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {
 		return nil, err
