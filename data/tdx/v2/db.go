@@ -55,18 +55,17 @@ type DB struct {
 	db   *xorms.Engine
 }
 
-func (this *DB) AllKlineHandler() []func(pool *v1.Pool) ([]*v1.Kline, error) {
-	return []func(pool *v1.Pool) ([]*v1.Kline, error){
-		this.KlineMinute,
-		this.Kline5Minute,
-		this.Kline15Minute,
-		this.Kline30Minute,
-		this.KlineHour,
-		this.KlineDay,
-		this.KlineWeek,
-		this.KlineMonth,
-		this.KlineQuarter,
-		this.KlineYear,
+func (this *DB) AllKlineHandler() []*Handler {
+	return []*Handler{
+		{"1分K线", this.KlineMinute},
+		{"15分K线", this.Kline15Minute},
+		{"30分K线", this.Kline30Minute},
+		{"时K线", this.KlineHour},
+		{"日K线", this.KlineDay},
+		{"周K线", this.KlineWeek},
+		{"月K线", this.KlineMonth},
+		{"季K线", this.KlineQuarter},
+		{"年K线", this.KlineYear},
 	}
 }
 
@@ -77,7 +76,7 @@ func (this *DB) Close() error {
 // Update 更新数据
 func (this *DB) Update(pool *v1.Pool, dates []string) error {
 	for _, f := range this.AllKlineHandler() {
-		if _, err := f(pool); err != nil {
+		if _, err := f.Handler(pool); err != nil {
 			return err
 		}
 	}
@@ -362,4 +361,9 @@ func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*v1.Trade, 
 	})
 
 	return list[0], nil
+}
+
+type Handler struct {
+	Name    string
+	Handler func(pool *v1.Pool) ([]*v1.Kline, error)
 }

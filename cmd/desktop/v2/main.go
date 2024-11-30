@@ -14,6 +14,7 @@ import (
 	"github.com/injoyai/stock/data/tdx/v2"
 	"github.com/robfig/cron/v3"
 	"path/filepath"
+	"time"
 )
 
 func init() {
@@ -49,11 +50,6 @@ func main() {
 					}
 				})
 
-				//定时输出到csv
-				task.AddFunc("0 0 18 * * *", func() {
-
-				})
-
 				//更新数据
 				codes := c.Code.GetStocks()
 				logs.PrintErr(update(c, codes, conf.Number))
@@ -85,11 +81,11 @@ func update(c *tdx.Client, codes []string, limit int, retries ...int) error {
 			c.WithOpenDB(code, func(db *tdx.DB) error {
 				for _, v := range db.AllKlineHandler() {
 					err := g.Retry(func() error {
-						kline, err := v(c.Pool)
+						kline, err := v.Handler(c.Pool)
 						if err != nil {
 							return err
 						}
-						toCsv(kline)
+						toCsv(c, filepath.Join(v.Name+".csv"), kline)
 						return nil
 					}, retry)
 					logs.PrintErr(err)
@@ -105,8 +101,23 @@ func update(c *tdx.Client, codes []string, limit int, retries ...int) error {
 	return nil
 }
 
-func toCsv(kline v1.Klines) {
+func toCsv(c *tdx.Client, filename string, kline v1.Klines) error {
 
-	csv.Export(nil)
+	data := [][]any{
+		{"日期", "代码", "名称", "昨收", "今开", "最高", "最低", "现收", "总手", "金额", "涨幅", "涨幅比"},
+	}
+	for _, k := range kline {
+		data = append(data, []any{
+			time.Unix(k.Unix, 0).Format(time.DateTime), k.Exchange + k.Code, c.Code.GetName(k.Exchange + k.Code),
+			0, k.Open, k.High, k.Low, k.Close, k.Volume, k.Amount, k.RisePrice, k.RiseRate,
+		})
+	}
+
+	buf, err := csv.Export(data)
+	if err != nil {
+		return err
+	}
+
+	return oss.New(filename, buf)
 
 }
