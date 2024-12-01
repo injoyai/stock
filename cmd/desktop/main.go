@@ -21,7 +21,7 @@ var (
 			//C:\Users\Admin\AppData\Local\JetBrains\GoLand2024.1\tmp\GoLand\___1go_build_github_com_injoyai_stock_cmd_desktop.exe
 			execName = "./"
 		}
-		return filepath.Join(filepath.Dir(execName), "/database")
+		return filepath.Join(oss.ExecDir(), "/database")
 	}()
 )
 

@@ -36,6 +36,11 @@ func NewCode(hosts []string, filename string, op ...client.Option) (*Code, error
 		return nil, err
 	}
 
+	err = db.Sync2(new(v1.Code))
+	if err != nil {
+		return nil, err
+	}
+
 	cc := &Code{
 		Client: c,
 		db:     db,

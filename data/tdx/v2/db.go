@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/database/xorms"
+	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/logs"
 	v1 "github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/tdx"
@@ -57,15 +58,15 @@ type DB struct {
 
 func (this *DB) AllKlineHandler() []*Handler {
 	return []*Handler{
-		{"1分K线", this.KlineMinute},
-		{"15分K线", this.Kline15Minute},
-		{"30分K线", this.Kline30Minute},
-		{"时K线", this.KlineHour},
-		{"日K线", this.KlineDay},
-		{"周K线", this.KlineWeek},
-		{"月K线", this.KlineMonth},
-		{"季K线", this.KlineQuarter},
-		{"年K线", this.KlineYear},
+		{"1分K线", "2006-01-02 15:04", this.KlineMinute},
+		{"15分K线", "2006-01-02 15:04", this.Kline15Minute},
+		{"30分K线", "2006-01-02 15:04", this.Kline30Minute},
+		{"时K线", "2006-01-02 15:04", this.KlineHour},
+		{"日K线", "2006-01-02", this.KlineDay},
+		{"周K线", "2006-01-02", this.KlineWeek},
+		{"月K线", "2006-01", this.KlineMonth},
+		{"季K线", "2006-01", this.KlineQuarter},
+		{"年K线", "2006", this.KlineYear},
 	}
 }
 
@@ -114,7 +115,7 @@ func (this *DB) KlineMinute(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKlineMinute(code, start, count)
-	})
+	}, times.IntegerMinute)
 }
 
 func (this *DB) Kline5Minute(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -125,7 +126,7 @@ func (this *DB) Kline5Minute(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKline5Minute(code, start, count)
-	})
+	}, times.IntegerMinute)
 }
 
 func (this *DB) Kline15Minute(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -136,7 +137,7 @@ func (this *DB) Kline15Minute(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKline15Minute(code, start, count)
-	})
+	}, times.IntegerMinute)
 }
 
 func (this *DB) Kline30Minute(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -147,7 +148,7 @@ func (this *DB) Kline30Minute(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKline30Minute(code, start, count)
-	})
+	}, times.IntegerMinute)
 }
 
 func (this *DB) KlineHour(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -158,7 +159,7 @@ func (this *DB) KlineHour(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKlineHour(code, start, count)
-	})
+	}, times.IntegerHour)
 }
 
 func (this *DB) KlineDay(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -169,7 +170,7 @@ func (this *DB) KlineDay(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKlineDay(code, start, count)
-	})
+	}, times.IntegerDay)
 }
 
 func (this *DB) KlineWeek(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -180,7 +181,7 @@ func (this *DB) KlineWeek(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKlineWeek(code, start, count)
-	})
+	}, times.IntegerWeek)
 }
 
 func (this *DB) KlineMonth(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -191,7 +192,7 @@ func (this *DB) KlineMonth(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKlineMonth(code, start, count)
-	})
+	}, times.IntegerMonth)
 }
 
 func (this *DB) KlineQuarter(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -202,7 +203,7 @@ func (this *DB) KlineQuarter(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKlineQuarter(code, start, count)
-	})
+	}, times.IntegerQuarter)
 }
 
 func (this *DB) KlineYear(pool *v1.Pool) ([]*v1.Kline, error) {
@@ -213,10 +214,10 @@ func (this *DB) KlineYear(pool *v1.Pool) ([]*v1.Kline, error) {
 		}
 		defer pool.Put(c)
 		return c.GetKlineYear(code, start, count)
-	})
+	}, times.IntegerYear)
 }
 
-func (this *DB) kline(suffix string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) ([]*v1.Kline, error) {
+func (this *DB) kline(suffix string, get func(code string, start, count uint16) (*protocol.KlineResp, error), dealTime func(t time.Time) time.Time) ([]*v1.Kline, error) {
 
 	//1. 连接数据库
 	table := v1.NewKlineTable(suffix)
@@ -226,6 +227,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 	cache := []*v1.Kline(nil)
 	err := this.db.Table(table).Find(&cache)
 	if err != nil {
+		logs.Err(err)
 		return nil, err
 	}
 
@@ -241,12 +243,14 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 	for start := uint16(0); ; start += size {
 		resp, err := get(this.code, start, size)
 		if err != nil {
+			logs.Err(err)
 			return nil, err
 		}
 
 		done := false
 		ls := []*v1.Kline(nil)
 		for _, v := range resp.List {
+			v.Time = dealTime(v.Time)
 			if last.Unix <= v.Time.Unix() {
 				ls = append(ls, v1.NewKline(this.code, v))
 			} else {
@@ -277,6 +281,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		return nil
 	})
 	if err != nil {
+		logs.Err(err)
 		return nil, err
 	}
 
@@ -365,5 +370,6 @@ func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*v1.Trade, 
 
 type Handler struct {
 	Name    string
+	Format  string
 	Handler func(pool *v1.Pool) ([]*v1.Kline, error)
 }

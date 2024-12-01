@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Hosts    []string //服务端IP
 	Number   int      //客户端数量
+	Limit    int      //协程数量
 	Database string   //数据位置
 }
 
@@ -28,7 +29,7 @@ func (this *Config) init() *Config {
 			//C:\Users\Admin\AppData\Local\JetBrains\GoLand2024.1\tmp\GoLand\___1go_build_github_com_injoyai_stock_cmd_desktop.exe
 			this.Database = "./database/"
 		default:
-			this.Database = filepath.Join(filepath.Dir(oss.ExecDir()), "/database")
+			this.Database = filepath.Join(oss.ExecDir(), "/database")
 		}
 	}
 	if this.Number <= 0 {
