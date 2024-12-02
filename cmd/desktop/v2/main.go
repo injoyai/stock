@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
-	"fmt"
 	"github.com/injoyai/base/chans"
 	"github.com/injoyai/conv"
 	"github.com/injoyai/conv/cfg/v2"
@@ -11,13 +10,13 @@ import (
 	"github.com/injoyai/goutil/notice"
 	"github.com/injoyai/goutil/oss"
 	"github.com/injoyai/goutil/oss/tray"
+	"github.com/injoyai/goutil/oss/win"
 	"github.com/injoyai/logs"
 	v1 "github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/stock/data/tdx/v2"
 	"github.com/robfig/cron/v3"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -79,7 +78,7 @@ func main() {
 			}()
 		},
 		tray.WithLabel("版本: v0.2.0"),
-		tray.WithStartup(),
+		WithStartup(),
 		tray.WithSeparator(),
 		tray.WithExit(),
 		tray.WithHint("定时拉取股票信息"),
@@ -95,19 +94,18 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 
 	ch := chans.NewWaitLimit(uint(limit))
 
-	total := len(codes)
-	current := uint32(0)
-	s.SetHint(time.Now().Format("15:04:05") + " " + fmt.Sprintf("更新进度: %.1f%%", float64(current*100)/float64(total)))
+	plan := NewPlan(len(codes))
+	s.SetHint(plan.String())
 
 	//2. 遍历全部股票
 	for i := range codes {
 		//3. 进行按股票进行每日更新,并尝试重试
 		ch.Add()
 		go func(code string) {
-			defer ch.Done()
 			defer func() {
-				atomic.AddUint32(&current, 1)
-				s.SetHint(time.Now().Format("15:04:05") + " " + fmt.Sprintf("更新进度: %.1f%%", float64(current*100)/float64(total)))
+				ch.Done()
+				plan.Add()
+				s.SetHint(plan.String())
 			}()
 			c.WithOpenDB(code, func(db *tdx.DB) error {
 				for _, v := range db.AllKlineHandler() {
@@ -168,4 +166,23 @@ func Export(data [][]interface{}) (*bytes.Buffer, error) {
 	}
 	w.Flush()
 	return buf, nil
+}
+
+func WithStartup() tray.Option {
+	return func(s *tray.Stray) {
+		filename := oss.ExecName()
+		_, name := filepath.Split(filename)
+		name = strings.Split(name, ".")[0]
+		startupFilename := oss.UserStartupDir(name + ".lnk")
+		s.AddMenuCheck().SetChecked(oss.Exists(startupFilename)).
+			SetName("自启").OnClick(func(m *tray.Menu) {
+			if !m.Checked() {
+				logs.PrintErr(win.CreateStartupShortcut(filename))
+				m.Check()
+			} else {
+				logs.PrintErr(oss.Remove(startupFilename))
+				m.Uncheck()
+			}
+		})
+	}
 }
