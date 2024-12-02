@@ -184,6 +184,7 @@ type Kline struct {
 	Day       int     `json:"day"`                   //日
 	Hour      int     `json:"hour"`                  //时
 	Minute    int     `json:"minute"`                //分
+	Last      float64 `json:"last"`                  //昨收
 	Open      float64 `json:"open"`                  //开盘价
 	High      float64 `json:"high"`                  //最高价
 	Low       float64 `json:"low"`                   //最低价

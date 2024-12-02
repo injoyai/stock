@@ -30,7 +30,7 @@ func main() {
 	conf := &tdx.Config{
 		Hosts:    cfg.GetStrings("hosts"),
 		Number:   cfg.GetInt("number", 10),
-		Limit:    cfg.GetInt("limit", 100),
+		Limit:    cfg.GetInt("limit", 20),
 		Database: cfg.GetString("database"),
 	}
 
@@ -88,7 +88,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 			defer ch.Done()
 			defer func() {
 				atomic.AddUint32(&current, 1)
-				s.SetHint(fmt.Sprintf("更新进度: %.2f%%", float64(current)/float64(total*100)))
+				s.SetHint(time.Now().Format("15:04:05") + " " + fmt.Sprintf("更新进度: %.1f%%", float64(current*100)/float64(total)))
 			}()
 			c.WithOpenDB(code, func(db *tdx.DB) error {
 				for _, v := range db.AllKlineHandler() {
@@ -110,6 +110,8 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 
 	ch.Wait()
 
+	//进行压缩操作
+
 	return nil
 }
 
@@ -121,7 +123,7 @@ func toCsv(c *tdx.Client, filename, format string, kline v1.Klines) error {
 	for _, k := range kline {
 		data = append(data, []any{
 			time.Unix(k.Unix, 0).Format(format), k.Exchange + k.Code, c.Code.GetName(k.Exchange + k.Code),
-			0, k.Open, k.High, k.Low, k.Close, k.Volume, k.Amount, k.RisePrice, k.RiseRate,
+			k.Last, k.Open, k.High, k.Low, k.Close, k.Volume, k.Amount, k.RisePrice, k.RiseRate,
 		})
 	}
 
