@@ -14,6 +14,7 @@ import (
 	"github.com/injoyai/logs"
 	v1 "github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/stock/data/tdx/v2"
+	"github.com/injoyai/stock/util/zip"
 	"github.com/robfig/cron/v3"
 	"path/filepath"
 	"strings"
@@ -77,7 +78,7 @@ func main() {
 				logs.PrintErr(update(s, c, codes, conf.Limit))
 			}()
 		},
-		tray.WithLabel("版本: v0.2.0"),
+		tray.WithLabel("版本: v0.2.1"),
 		WithStartup(),
 		tray.WithSeparator(),
 		tray.WithExit(),
@@ -114,7 +115,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 						if err != nil {
 							return err
 						}
-						toCsv(c, filepath.Join(c.Cfg.Database, "csv", code, v.Name+".csv"), v.Format, kline)
+						toCsv(c, filepath.Join(c.Cfg.Database, "csv", code, v.Name+".csv"), kline)
 						return nil
 					}, retry)
 					logs.PrintErr(err)
@@ -128,18 +129,20 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 	ch.Wait()
 
 	//进行压缩操作
+	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(c.Cfg.Database, "csv.zip"))
+	logs.PrintErr(err)
 
 	return nil
 }
 
-func toCsv(c *tdx.Client, filename, format string, kline v1.Klines) error {
+func toCsv(c *tdx.Client, filename string, kline v1.Klines) error {
 
 	data := [][]any{
 		{"日期", "代码", "名称", "昨收", "今开", "最高", "最低", "现收", "总手", "金额", "涨幅", "涨幅比"},
 	}
 	for _, k := range kline {
 		data = append(data, []any{
-			time.Unix(k.Unix, 0).Format(format), k.Exchange + k.Code, c.Code.GetName(k.Exchange + k.Code),
+			time.Unix(k.Unix, 0).Format(time.DateTime), k.Exchange + k.Code, c.Code.GetName(k.Exchange + k.Code),
 			k.Last, k.Open, k.High, k.Low, k.Close, k.Volume, k.Amount, k.RisePrice, k.RiseRate,
 		})
 	}

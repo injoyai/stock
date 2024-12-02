@@ -42,7 +42,7 @@ func (this *Real) Get(code string, cache v1.Klines) (v1.Klines, error) {
 		for _, v := range resp.List {
 			//获取今天有效的分时图
 			if last.Unix <= v.Time.Unix() {
-				list = append(list, v1.NewKline(code, v))
+				list = append(list, v1.NewKline(code, v, v.Time))
 			} else {
 				done = true
 			}

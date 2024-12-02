@@ -290,7 +290,7 @@ func (this *Client) KlineReal(code string, cache Klines) (Klines, error) {
 		for _, v := range resp.List {
 			//获取今天有效的分时图
 			if last.Unix <= v.Time.Unix() {
-				list = append(list, NewKline(code, v))
+				list = append(list, NewKline(code, v, v.Time))
 			} else {
 				done = true
 			}

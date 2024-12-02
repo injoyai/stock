@@ -188,7 +188,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		ls := []*Kline(nil)
 		for _, v := range resp.List {
 			if last.Unix <= v.Time.Unix() {
-				ls = append(ls, NewKline(this.code, v))
+				ls = append(ls, NewKline(this.code, v, v.Time))
 			} else {
 				done = true
 			}

@@ -153,16 +153,18 @@ type Update struct {
 
 /**/
 
-func NewKline(code string, kline *protocol.Kline) *Kline {
+func NewKline(code string, kline *protocol.Kline, node time.Time) *Kline {
 	return &Kline{
 		Exchange:  code[:2],
 		Code:      code[2:],
+		Node:      node.Unix(),
 		Unix:      kline.Time.Unix(),
 		Year:      kline.Time.Year(),
 		Month:     int(kline.Time.Month()),
 		Day:       kline.Time.Day(),
 		Hour:      kline.Time.Hour(),
 		Minute:    kline.Time.Minute(),
+		Last:      kline.Last.Float64(),
 		Open:      kline.Open.Float64(),
 		High:      kline.High.Float64(),
 		Low:       kline.Low.Float64(),
@@ -170,7 +172,7 @@ func NewKline(code string, kline *protocol.Kline) *Kline {
 		Volume:    kline.Volume,
 		RisePrice: kline.RisePrice().Float64(),
 		RiseRate:  kline.RiseRate(),
-		Amount:    kline.Amount.Int64(),
+		Amount:    kline.Amount.Float64(),
 	}
 }
 
@@ -178,6 +180,7 @@ type Kline struct {
 	ID        int64   `json:"id"`                    //主键
 	Exchange  string  `json:"exchange" xorm:"index"` //交易所
 	Code      string  `json:"code" xorm:"index"`     //代码
+	Node      int64   `json:"node" xorm:"index"`     //时间节点
 	Unix      int64   `json:"unix"`                  //时间戳
 	Year      int     `json:"year"`                  //年
 	Month     int     `json:"month"`                 //月
@@ -190,7 +193,7 @@ type Kline struct {
 	Low       float64 `json:"low"`                   //最低价
 	Close     float64 `json:"close"`                 //最新价,对应历史收盘价
 	Volume    int64   `json:"volume"`                //成交量
-	Amount    int64   `json:"amount"`                //成交额
+	Amount    float64 `json:"amount"`                //成交额
 	RisePrice float64 `json:"risePrice"`             //涨跌幅
 	RiseRate  float64 `json:"riseRate"`              //涨跌幅度
 	InDate    int64   `json:"inDate" xorm:"created"` //创建时间

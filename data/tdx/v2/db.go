@@ -58,15 +58,15 @@ type DB struct {
 
 func (this *DB) AllKlineHandler() []*Handler {
 	return []*Handler{
-		{"1分K线", "2006-01-02 15:04", this.KlineMinute},
-		{"15分K线", "2006-01-02 15:04", this.Kline15Minute},
-		{"30分K线", "2006-01-02 15:04", this.Kline30Minute},
-		{"时K线", "2006-01-02 15:04", this.KlineHour},
-		{"日K线", "2006-01-02", this.KlineDay},
-		{"周K线", "2006-01-02", this.KlineWeek},
-		{"月K线", "2006-01", this.KlineMonth},
-		{"季K线", "2006-01", this.KlineQuarter},
-		{"年K线", "2006", this.KlineYear},
+		{"1分K线", this.KlineMinute},
+		{"15分K线", this.Kline15Minute},
+		{"30分K线", this.Kline30Minute},
+		{"时K线", this.KlineHour},
+		{"日K线", this.KlineDay},
+		{"周K线", this.KlineWeek},
+		{"月K线", this.KlineMonth},
+		{"季K线", this.KlineQuarter},
+		{"年K线", this.KlineYear},
 	}
 }
 
@@ -250,9 +250,9 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		done := false
 		ls := []*v1.Kline(nil)
 		for _, v := range resp.List {
-			v.Time = dealTime(v.Time)
-			if last.Unix <= v.Time.Unix() {
-				ls = append(ls, v1.NewKline(this.code, v))
+			node := dealTime(v.Time)
+			if last.Node <= node.Unix() {
+				ls = append(ls, v1.NewKline(this.code, v, node))
 			} else {
 				done = true
 			}
@@ -370,6 +370,5 @@ func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*v1.Trade, 
 
 type Handler struct {
 	Name    string
-	Format  string
 	Handler func(pool *v1.Pool) ([]*v1.Kline, error)
 }
