@@ -22,7 +22,16 @@ import (
 
 func init() {
 	logs.SetShowColor(false)
-	cfg.Init(cfg.WithFile(filepath.Join(oss.ExecDir(), "/config/config.yaml")))
+	cfg.Init(
+		cfg.WithFile(filepath.Join(oss.ExecDir(), "/config/config.yaml")),
+		cfg.WithFlag(
+			&cfg.Flag{Name: "hosts", Usage: "服务器地址"},
+			&cfg.Flag{Name: "number", Usage: "客户端数量"},
+			&cfg.Flag{Name: "limit", Usage: "协程数量"},
+			&cfg.Flag{Name: "database", Usage: "数据存储位置"},
+			&cfg.Flag{Name: "codes", Usage: "爬取的股票代码(sz000001)"},
+		),
+	)
 }
 
 func main() {
@@ -50,13 +59,14 @@ func main() {
 						notice.DefaultWindows.Publish(&notice.Message{
 							Content: "开始更新数据...",
 						})
-						err = update(s, c, c.Code.GetStocks(), conf.Limit)
+						codes := cfg.GetStrings("codes", c.Code.GetStocks())
+						err = update(s, c, codes, conf.Limit)
 						logs.PrintErr(err)
 					}
 				})
 
 				//更新数据
-				codes := c.Code.GetStocks()
+				codes := cfg.GetStrings("codes", c.Code.GetStocks())
 				logs.PrintErr(update(s, c, codes, conf.Limit))
 			}()
 		},
