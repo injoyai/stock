@@ -16,6 +16,7 @@ import (
 	"github.com/injoyai/stock/data/tdx/v2"
 	"github.com/robfig/cron/v3"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -23,7 +24,14 @@ import (
 func init() {
 	logs.SetShowColor(false)
 	cfg.Init(
-		cfg.WithFile(filepath.Join(oss.ExecDir(), "/config/config.yaml")),
+		func() conv.IGetVar {
+			execDir := oss.ExecDir()
+			switch {
+			case strings.HasPrefix(execDir, "C:\\Users"):
+				return cfg.WithFile("./config/config.yaml")
+			}
+			return cfg.WithFile(filepath.Join(execDir, "/config/config.yaml"))
+		}(),
 		cfg.WithFlag(
 			&cfg.Flag{Name: "hosts", Usage: "服务器地址"},
 			&cfg.Flag{Name: "number", Usage: "客户端数量"},
@@ -89,6 +97,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 
 	total := len(codes)
 	current := uint32(0)
+	s.SetHint(time.Now().Format("15:04:05") + " " + fmt.Sprintf("更新进度: %.1f%%", float64(current*100)/float64(total)))
 
 	//2. 遍历全部股票
 	for i := range codes {
