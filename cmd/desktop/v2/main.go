@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/csv"
 	"github.com/injoyai/base/chans"
 	"github.com/injoyai/conv"
 	"github.com/injoyai/conv/cfg/v2"
@@ -14,6 +12,7 @@ import (
 	"github.com/injoyai/logs"
 	v1 "github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/stock/data/tdx/v2"
+	"github.com/injoyai/stock/util/csv"
 	"github.com/injoyai/stock/util/zip"
 	"github.com/robfig/cron/v3"
 	"path/filepath"
@@ -147,28 +146,13 @@ func toCsv(c *tdx.Client, filename string, kline v1.Klines) error {
 		})
 	}
 
-	buf, err := Export(data)
+	buf, err := csv.Export(data)
 	if err != nil {
 		return err
 	}
 
 	return oss.New(filename, buf)
 
-}
-
-func Export(data [][]interface{}) (*bytes.Buffer, error) {
-	buf := bytes.NewBuffer(nil)
-	if _, err := buf.WriteString("\xEF\xBB\xBF"); err != nil {
-		return nil, err
-	}
-	w := csv.NewWriter(buf)
-	for _, v := range data {
-		if err := w.Write(conv.Strings(v)); err != nil {
-			return nil, err
-		}
-	}
-	w.Flush()
-	return buf, nil
 }
 
 func WithStartup() tray.Option {
