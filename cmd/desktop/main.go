@@ -1,49 +1,63 @@
 package main
 
 import (
+	"github.com/injoyai/base/chans"
 	"github.com/injoyai/conv"
 	"github.com/injoyai/conv/cfg/v2"
+	"github.com/injoyai/goutil/g"
 	"github.com/injoyai/goutil/notice"
 	"github.com/injoyai/goutil/oss"
+	"github.com/injoyai/goutil/oss/tray"
+	"github.com/injoyai/goutil/oss/win"
 	"github.com/injoyai/logs"
-	"github.com/injoyai/stock/data/tdx"
+	v1 "github.com/injoyai/stock/data/tdx"
+	"github.com/injoyai/stock/data/tdx/v2"
+	"github.com/injoyai/stock/util/csv"
+	"github.com/injoyai/stock/util/zip"
 	"github.com/robfig/cron/v3"
 	"path/filepath"
 	"strings"
-)
-
-var (
-	DefaultDatabase = func() string {
-		execName := oss.ExecDir()
-		switch {
-		case strings.HasPrefix(execName, "C:\\Users"):
-			//默认IDE缓存的地方,则读取代码位置的配置
-			//C:\Users\Admin\AppData\Local\JetBrains\GoLand2024.1\tmp\GoLand\___1go_build_github_com_injoyai_stock_cmd_desktop.exe
-			execName = "./"
-		}
-		return filepath.Join(oss.ExecDir(), "/database")
-	}()
+	"time"
 )
 
 func init() {
 	logs.SetShowColor(false)
-	cfg.Init(cfg.WithFile(filepath.Join(oss.ExecDir(), "/config/config.yaml")))
+	cfg.Init(
+		func() conv.IGetVar {
+			execDir := oss.ExecDir()
+			switch {
+			case strings.HasPrefix(execDir, "C:\\Users"):
+				return cfg.WithFile("./config/config.yaml")
+			}
+			return cfg.WithFile(filepath.Join(execDir, "/config/config.yaml"))
+		}(),
+		cfg.WithFlag(
+			&cfg.Flag{Name: "hosts", Usage: "服务器地址"},
+			&cfg.Flag{Name: "number", Usage: "客户端数量"},
+			&cfg.Flag{Name: "limit", Usage: "协程数量"},
+			&cfg.Flag{Name: "database", Usage: "数据存储位置"},
+			&cfg.Flag{Name: "codes", Usage: "爬取的股票代码(sz000001)"},
+		),
+	)
 }
 
 func main() {
 
-	Run(
-		func(s *Stray) {
+	conf := &tdx.Config{
+		Hosts:    cfg.GetStrings("hosts"),
+		Number:   cfg.GetInt("number", 10),
+		Limit:    cfg.GetInt("limit", 20),
+		Database: cfg.GetString("database"),
+	}
+
+	tray.Run(
+		func(s *tray.Stray) {
+			s.SetIco(IcoStock)
 			go func() {
 				task := cron.New(cron.WithSeconds())
 
 				//连接客户端
-				c, err := tdx.Dial(&tdx.Config{
-					Hosts:    cfg.GetStrings("hosts"),
-					Cap:      cfg.GetInt("cap", 50),
-					Database: cfg.GetString("database", DefaultDatabase),
-					Workday:  cfg.GetString("workday", "workday"),
-				})
+				c, err := tdx.Dial(conf)
 				logs.PanicErr(err)
 
 				//每天下午16点进行数据更新
@@ -52,51 +66,110 @@ func main() {
 						notice.DefaultWindows.Publish(&notice.Message{
 							Content: "开始更新数据...",
 						})
-						err = update(c, c.GetStockCodes())
+						codes := cfg.GetStrings("codes", c.Code.GetStocks())
+						err = update(s, c, codes, conf.Limit)
 						logs.PrintErr(err)
 					}
 				})
 
-				//定时输出到csv
-				task.AddFunc("0 0 18 * * *", func() {
-
-				})
-
-				codes := c.GetStockCodes()
-
 				//更新数据
-				logs.PrintErr(update(c, codes))
+				codes := cfg.GetStrings("codes", c.Code.GetStocks())
+				logs.PrintErr(update(s, c, codes, conf.Limit))
 			}()
 		},
-		WithLabel("版本: v0.0.2"),
+		tray.WithLabel("版本: v0.2.1"),
 		WithStartup(),
-		WithSeparator(),
-		WithExit(),
-		WithHint("定时拉取股票信息"),
+		tray.WithSeparator(),
+		tray.WithExit(),
+		tray.WithHint("定时拉取股票信息"),
 	)
 
 }
 
-func update(c *tdx.Client, codes []string, retrys ...int) error {
+func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...int) error {
 
-	retry := conv.DefaultInt(3, retrys...)
+	retry := conv.DefaultInt(3, retries...)
 
 	logs.Info("开始更新数据...")
+
+	ch := chans.NewWaitLimit(uint(limit))
+
+	plan := NewPlan(len(codes))
+	s.SetHint(plan.String())
 
 	//2. 遍历全部股票
 	for i := range codes {
 		//3. 进行按股票进行每日更新,并尝试重试
-		code := codes[i]
-		go c.Pool.Retry(func(cli *tdx.Cli) error {
-			return c.WithOpenDB(code, func(db *tdx.DB) error {
+		ch.Add()
+		go func(code string) {
+			defer func() {
+				ch.Done()
+				plan.Add()
+				s.SetHint(plan.String())
+			}()
+			c.WithOpenDB(code, func(db *tdx.DB) error {
 				for _, v := range db.AllKlineHandler() {
-					_, err := v(cli)
+					err := g.Retry(func() error {
+						kline, err := v.Handler(c.Pool)
+						if err != nil {
+							return err
+						}
+						toCsv(c, filepath.Join(c.Cfg.Database, "csv", code, v.Name+".csv"), kline)
+						return nil
+					}, retry)
 					logs.PrintErr(err)
 				}
 				return nil
 			})
-		}, retry)
+		}(codes[i])
+
 	}
 
+	ch.Wait()
+
+	//进行压缩操作
+	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(c.Cfg.Database, "csv.zip"))
+	logs.PrintErr(err)
+
 	return nil
+}
+
+func toCsv(c *tdx.Client, filename string, kline v1.Klines) error {
+
+	data := [][]any{
+		{"日期", "代码", "名称", "昨收", "今开", "最高", "最低", "现收", "总手", "金额", "涨幅", "涨幅比"},
+	}
+	for _, k := range kline {
+		data = append(data, []any{
+			time.Unix(k.Unix, 0).Format(time.DateTime), k.Exchange + k.Code, c.Code.GetName(k.Exchange + k.Code),
+			k.Last, k.Open, k.High, k.Low, k.Close, k.Volume, k.Amount, k.RisePrice, k.RiseRate,
+		})
+	}
+
+	buf, err := csv.Export(data)
+	if err != nil {
+		return err
+	}
+
+	return oss.New(filename, buf)
+
+}
+
+func WithStartup() tray.Option {
+	return func(s *tray.Stray) {
+		filename := oss.ExecName()
+		_, name := filepath.Split(filename)
+		name = strings.Split(name, ".")[0]
+		startupFilename := oss.UserStartupDir(name + ".lnk")
+		s.AddMenuCheck().SetChecked(oss.Exists(startupFilename)).
+			SetName("自启").OnClick(func(m *tray.Menu) {
+			if !m.Checked() {
+				logs.PrintErr(win.CreateStartupShortcut(filename))
+				m.Check()
+			} else {
+				logs.PrintErr(oss.Remove(startupFilename))
+				m.Uncheck()
+			}
+		})
+	}
 }

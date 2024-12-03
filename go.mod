@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.1
-	github.com/getlantern/systray v1.2.2
+	github.com/getlantern/systray v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/injoyai/base v1.0.19
 	github.com/injoyai/conv v1.1.10
