@@ -1,10 +1,8 @@
-package tdx
+package model
 
 import (
 	"github.com/injoyai/conv"
-	"github.com/injoyai/stock/gui"
 	"github.com/injoyai/tdx/protocol"
-	"math"
 	"time"
 )
 
@@ -74,80 +72,6 @@ type Update struct {
 	KlineYear     int64  `json:"klineYear"`     //年K线更新时间
 	Trade         int64  `json:"trade"`         //分时成交更新时间
 }
-
-//// Update 记录更新时间,避免重复更新
-//type Update struct {
-//	ID            int64 `json:"id"`                    //主键
-//	Code          int64 `json:"code"`                  //代码更新时间
-//	KlineMinute   int64 `json:"klineMinute"`           //1分钟K线
-//	Kline5Minute  int64 `json:"kline5Minute"`          //5分钟K线
-//	Kline15Minute int64 `json:"kline15Minute"`         //15分钟K线
-//	Kline30Minute int64 `json:"kline30Minute"`         //30分钟K线
-//	KlineHour     int64 `json:"klineHour"`             //小时K线
-//	KlineDay      int64 `json:"klineDay"`              //日K线
-//	KlineWeek     int64 `json:"klineWeek"`             //周K线
-//	KlineMonth    int64 `json:"klineMonth"`            //月K线
-//	KlineQuarter  int64 `json:"klineQuarter"`          //季K线
-//	KlineYear     int64 `json:"klineYear"`             //年K线
-//	InDate        int64 `json:"inDate" xorm:"created"` //创建时间
-//}
-//
-//func (this *Update) GetVar(key string) *conv.Var {
-//	switch strings.ToLower(key) {
-//	case "code":
-//		return conv.New(this.Code)
-//	case "klineminute":
-//		return conv.New(this.KlineMinute)
-//	case "kline5minute":
-//		return conv.New(this.Kline5Minute)
-//	case "kline15minute":
-//		return conv.New(this.Kline15Minute)
-//	case "kline30minute":
-//		return conv.New(this.Kline30Minute)
-//	case "klinehour":
-//		return conv.New(this.KlineHour)
-//	case "klineday":
-//		return conv.New(this.KlineDay)
-//	case "klineweek":
-//		return conv.New(this.KlineWeek)
-//	case "klinemonth":
-//		return conv.New(this.KlineMonth)
-//	case "klinequarter":
-//		return conv.New(this.KlineQuarter)
-//	case "klineyear":
-//		return conv.New(this.KlineYear)
-//	default:
-//		return conv.Nil()
-//	}
-//}
-//
-//func (this *Update) Update(key string) *Update {
-//	switch strings.ToLower(key) {
-//	case "code":
-//		this.Code = time.Now().Unix()
-//	case "klineminute":
-//		this.KlineMinute = time.Now().Unix()
-//	case "kline5minute":
-//		this.Kline5Minute = time.Now().Unix()
-//	case "kline15minute":
-//		this.Kline15Minute = time.Now().Unix()
-//	case "kline30minute":
-//		this.Kline30Minute = time.Now().Unix()
-//	case "klinehour":
-//		this.KlineHour = time.Now().Unix()
-//	case "klineday":
-//		this.KlineDay = time.Now().Unix()
-//	case "klineweek":
-//		this.KlineWeek = time.Now().Unix()
-//	case "klinemonth":
-//		this.KlineMonth = time.Now().Unix()
-//	case "klinequarter":
-//		this.KlineQuarter = time.Now().Unix()
-//	case "klineyear":
-//		this.KlineYear = time.Now().Unix()
-//	}
-//	return this
-//}
 
 /**/
 
@@ -220,65 +144,6 @@ type KlineChart struct {
 }
 
 type Klines []*Kline
-
-// Chart k线图 实时价格
-func (this Klines) Chart(name string) *gui.Chart {
-	c := &gui.Chart{
-		Labels: make([]string, len(this)),
-		Datasets: []*gui.ChartItem{{
-			Label: name,
-			Data:  make([]float64, len(this)),
-		}},
-	}
-	for i, v := range this {
-		c.Labels[i] = time.Unix(v.Unix, 0).Format("15:04")
-		c.Datasets[0].Data[i] = v.Close
-		if v.Close > c.Max {
-			c.Max = v.Close
-		}
-		if v.Close < c.Min || c.Min == 0 {
-			c.Min = v.Close
-		}
-	}
-	c.Max *= 1.02
-	c.Min *= 0.98
-	return c
-}
-
-func (this Klines) ChartDay(last float64, name string) *gui.Chart {
-	dayMinute := 60 * 4
-	c := &gui.Chart{
-		Labels: make([]string, dayMinute),
-		Datasets: []*gui.ChartItem{{
-			Label: name,
-			Data:  make([]float64, len(this)),
-		}},
-	}
-
-	now := time.Date(2024, 1, 1, 9, 31, 0, 0, time.Local)
-	for i := 0; i < dayMinute/2; i++ {
-		c.Labels[i] = now.Add(time.Minute * time.Duration(i)).Format("15:04")
-	}
-
-	now = time.Date(2024, 1, 1, 13, 0, 0, 0, time.Local)
-	for i := 0; i < dayMinute/2; i++ {
-		c.Labels[i+dayMinute/2] = now.Add(time.Minute * time.Duration(i)).Format("15:04")
-	}
-
-	var sub float64
-	for i, v := range this {
-		c.Datasets[0].Data[i] = v.Close
-		val := math.Abs(v.Close - last)
-		if val > sub {
-			sub = val
-		}
-	}
-
-	c.Max = (last + sub) * 1.02
-	c.Min = (last - sub) * 0.98
-
-	return c
-}
 
 func (this Klines) Len() int {
 	return len(this)

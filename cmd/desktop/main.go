@@ -10,8 +10,8 @@ import (
 	"github.com/injoyai/goutil/oss/tray"
 	"github.com/injoyai/goutil/oss/win"
 	"github.com/injoyai/logs"
-	v1 "github.com/injoyai/stock/data/tdx"
-	"github.com/injoyai/stock/data/tdx/v2"
+	"github.com/injoyai/stock/data/tdx"
+	"github.com/injoyai/stock/data/tdx/model"
 	"github.com/injoyai/stock/util/csv"
 	"github.com/injoyai/stock/util/zip"
 	"github.com/robfig/cron/v3"
@@ -134,7 +134,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 	return nil
 }
 
-func toCsv(c *tdx.Client, filename string, kline v1.Klines) error {
+func toCsv(c *tdx.Client, filename string, kline model.Klines) error {
 
 	data := [][]any{
 		{"日期", "代码", "名称", "昨收", "今开", "最高", "最低", "现收", "总手", "金额", "涨幅", "涨幅比"},

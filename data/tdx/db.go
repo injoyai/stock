@@ -4,7 +4,9 @@ import (
 	"errors"
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/database/xorms"
+	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/logs"
+	"github.com/injoyai/stock/data/tdx/model"
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
 	"path/filepath"
@@ -19,28 +21,28 @@ func NewDB(dir, code string) (*DB, error) {
 		return nil, err
 	}
 	if err = db.Sync2(
-		new(Update),
-		new(Trade),
-		NewKlineTable("Minute"),
-		NewKlineTable("5Minute"),
-		NewKlineTable("15Minute"),
-		NewKlineTable("30Minute"),
-		NewKlineTable("Hour"),
-		NewKlineTable("Day"),
-		NewKlineTable("Week"),
-		NewKlineTable("Month"),
-		NewKlineTable("Quarter"),
-		NewKlineTable("Year"),
+		new(model.Update),
+		new(model.Trade),
+		model.NewKlineTable("Minute"),
+		model.NewKlineTable("5Minute"),
+		model.NewKlineTable("15Minute"),
+		model.NewKlineTable("30Minute"),
+		model.NewKlineTable("Hour"),
+		model.NewKlineTable("Day"),
+		model.NewKlineTable("Week"),
+		model.NewKlineTable("Month"),
+		model.NewKlineTable("Quarter"),
+		model.NewKlineTable("Year"),
 	); err != nil {
 		return nil, err
 	}
 
-	co, err := db.Count(new(Update))
+	co, err := db.Count(new(model.Update))
 	if err != nil {
 		return nil, err
 	}
 	if co == 0 {
-		if _, err = db.Insert(new(Update)); err != nil {
+		if _, err = db.Insert(new(model.Update)); err != nil {
 			return nil, err
 		}
 	}
@@ -54,18 +56,17 @@ type DB struct {
 	db   *xorms.Engine
 }
 
-func (this *DB) AllKlineHandler() []func(c *tdx.Client) ([]*Kline, error) {
-	return []func(c *Cli) ([]*Kline, error){
-		this.KlineMinute,
-		this.Kline5Minute,
-		this.Kline15Minute,
-		this.Kline30Minute,
-		this.KlineHour,
-		this.KlineDay,
-		this.KlineWeek,
-		this.KlineMonth,
-		this.KlineQuarter,
-		this.KlineYear,
+func (this *DB) AllKlineHandler() []*Handler {
+	return []*Handler{
+		{"1分K线", this.KlineMinute},
+		{"15分K线", this.Kline15Minute},
+		{"30分K线", this.Kline30Minute},
+		{"时K线", this.KlineHour},
+		{"日K线", this.KlineDay},
+		{"周K线", this.KlineWeek},
+		{"月K线", this.KlineMonth},
+		{"季K线", this.KlineQuarter},
+		{"年K线", this.KlineYear},
 	}
 }
 
@@ -74,32 +75,22 @@ func (this *DB) Close() error {
 }
 
 // Update 更新数据
-func (this *DB) Update(c *tdx.Client) error {
+func (this *DB) Update(pool *Pool, dates []string) error {
 	for _, f := range this.AllKlineHandler() {
-		if _, err := f(c); err != nil {
+		if _, err := f.Handler(pool); err != nil {
 			return err
 		}
 	}
-
-	klines, err := this.KlineDay(c)
-	if err != nil {
+	return pool.Do(func(c *tdx.Client) error {
+		_, err := this.Trade(c, this.code, dates)
 		return err
-	}
-	dates := []string(nil)
-	for _, v := range klines {
-		dates = append(dates, time.Unix(v.Unix, 0).Format("20060102"))
-	}
 
-	if _, err := this.Trade(c, this.code, dates); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 // GetInfo 获取信息
-func (this *DB) GetInfo() (*Update, error) {
-	info := new(Update)
+func (this *DB) GetInfo() (*model.Update, error) {
+	info := new(model.Update)
 	_, err := this.db.Get(info)
 	return info, err
 }
@@ -116,79 +107,152 @@ func (this *DB) Quote(c *tdx.Client) (*protocol.Quote, error) {
 	return resp[0], nil
 }
 
-func (this *DB) KlineMinute(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("Minute", c.GetKlineMinute)
+func (this *DB) KlineMinute(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("Minute", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKlineMinute(code, start, count)
+	}, times.IntegerMinute)
 }
 
-func (this *DB) Kline5Minute(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("5Minute", c.GetKline5Minute)
+func (this *DB) Kline5Minute(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("5Minute", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKline5Minute(code, start, count)
+	}, times.IntegerMinute)
 }
 
-func (this *DB) Kline15Minute(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("15Minute", c.GetKline15Minute)
+func (this *DB) Kline15Minute(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("15Minute", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKline15Minute(code, start, count)
+	}, times.IntegerMinute)
 }
 
-func (this *DB) Kline30Minute(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("30Minute", c.GetKline30Minute)
+func (this *DB) Kline30Minute(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("30Minute", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKline30Minute(code, start, count)
+	}, times.IntegerMinute)
 }
 
-func (this *DB) KlineHour(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("Hour", c.GetKlineHour)
+func (this *DB) KlineHour(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("Hour", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKlineHour(code, start, count)
+	}, times.IntegerHour)
 }
 
-func (this *DB) KlineDay(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("Day", c.GetKlineDay)
+func (this *DB) KlineDay(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("Day", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKlineDay(code, start, count)
+	}, times.IntegerDay)
 }
 
-func (this *DB) KlineWeek(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("Week", c.GetKlineWeek)
+func (this *DB) KlineWeek(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("Week", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKlineWeek(code, start, count)
+	}, times.IntegerWeek)
 }
 
-func (this *DB) KlineMonth(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("Month", c.GetKlineMonth)
+func (this *DB) KlineMonth(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("Month", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKlineMonth(code, start, count)
+	}, times.IntegerMonth)
 }
 
-func (this *DB) KlineQuarter(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("Quarter", c.GetKlineQuarter)
+func (this *DB) KlineQuarter(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("Quarter", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKlineQuarter(code, start, count)
+	}, times.IntegerQuarter)
 }
 
-func (this *DB) KlineYear(c *tdx.Client) ([]*Kline, error) {
-	return this.kline("Year", c.GetKlineYear)
+func (this *DB) KlineYear(pool *Pool) ([]*model.Kline, error) {
+	return this.kline("Year", func(code string, start, count uint16) (*protocol.KlineResp, error) {
+		c, err := pool.Get()
+		if err != nil {
+			return nil, err
+		}
+		defer pool.Put(c)
+		return c.GetKlineYear(code, start, count)
+	}, times.IntegerYear)
 }
 
-func (this *DB) kline(suffix string, get func(code string, start, count uint16) (*protocol.KlineResp, error)) ([]*Kline, error) {
+func (this *DB) kline(suffix string, get func(code string, start, count uint16) (*protocol.KlineResp, error), dealTime func(t time.Time) time.Time) ([]*model.Kline, error) {
 
 	//1. 连接数据库
-	table := NewKlineTable(suffix)
+	table := model.NewKlineTable(suffix)
 	logs.Debug("更新:", table.TableName())
 
 	//2. 查询数据库的数据
-	cache := []*Kline(nil)
+	cache := []*model.Kline(nil)
 	err := this.db.Table(table).Find(&cache)
 	if err != nil {
+		logs.Err(err)
 		return nil, err
 	}
 
-	last := new(Kline)
+	last := new(model.Kline)
 	if len(cache) > 0 {
 		last = cache[len(cache)-1]   //获取最后一条数据,用于截止从服务器拉的数据
 		cache = cache[:len(cache)-1] //去除最后一条数据,用拉取过来的数据更新掉
 	}
 
 	//3. 从服务器拉取数据
-	list := []*Kline(nil)
+	list := []*model.Kline(nil)
 	size := uint16(800)
 	for start := uint16(0); ; start += size {
 		resp, err := get(this.code, start, size)
 		if err != nil {
+			logs.Err(err)
 			return nil, err
 		}
 
 		done := false
-		ls := []*Kline(nil)
+		ls := []*model.Kline(nil)
 		for _, v := range resp.List {
-			if last.Unix <= v.Time.Unix() {
-				ls = append(ls, NewKline(this.code, v, v.Time))
+			node := dealTime(v.Time)
+			if last.Node <= node.Unix() {
+				ls = append(ls, model.NewKline(this.code, v, node))
 			} else {
 				done = true
 			}
@@ -217,20 +281,21 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		return nil
 	})
 	if err != nil {
+		logs.Err(err)
 		return nil, err
 	}
 
 	cache = append(cache, list...)
 
 	//5. 更新K线入库的时间,避免重复从服务器拉取,失败问题也不大
-	_, err = this.db.Table("Update").Update(map[string]int64{table.tableName: time.Now().Unix()})
+	_, err = this.db.Table("Update").Update(map[string]int64{table.TableName(): time.Now().Unix()})
 	logs.PrintErr(err)
 
 	return cache, nil
 }
 
-func (this *DB) getInfo() (*Update, error) {
-	info := new(Update)
+func (this *DB) getInfo() (*model.Update, error) {
+	info := new(model.Update)
 	_, err := this.db.Get(info)
 	return info, err
 }
@@ -240,13 +305,13 @@ Trade
 @code 股票代码，例sh000001
 @dates 股票的所有交易日期，格式20241106
 */
-func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*Trade, error) {
+func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*model.Trade, error) {
 	if len(dates) == 0 {
 		return nil, nil
 	}
 
 	//2. 查询最后的数据时间
-	last := new(Trade)
+	last := new(model.Trade)
 	_, err := this.db.Desc("ID").Get(last)
 	if err != nil {
 		return nil, err
@@ -255,20 +320,20 @@ func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*Trade, err
 	//3. 判断最后一条数据是否是15:00的,否则删除当天的数据
 	full := last.Hour == 15 && last.Minute == 0
 	if !full {
-		if _, err := this.db.Where("Date=?", last.Date).Delete(new(Trade)); err != nil {
+		if _, err := this.db.Where("Date=?", last.Date).Delete(new(model.Trade)); err != nil {
 			return nil, err
 		}
 	}
 
 	//4. 如果最后一条数据是今天的数据，直接返回
 	if last.Date == dates[len(dates)-1] && full {
-		list := []*Trade(nil)
+		list := []*model.Trade(nil)
 		err = this.db.Where("Date=?", last.Date).Find(&list)
 		return list, err
 	}
 
 	//5. 获取数据
-	list := [][]*Trade(nil) //时间倒序的
+	list := [][]*model.Trade(nil) //时间倒序的
 	for i := len(dates) - 1; i > 0; i-- {
 		date := dates[i]
 		if date < last.Date || (!full && date == last.Date) {
@@ -278,9 +343,9 @@ func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*Trade, err
 		if err != nil {
 			return nil, err
 		}
-		ls := []*Trade(nil)
+		ls := []*model.Trade(nil)
 		for _, v := range resp.List {
-			ls = append(ls, NewTrade(code, date, v))
+			ls = append(ls, model.NewTrade(code, date, v))
 		}
 		list = append(list, ls)
 		if resp.Count == 0 {
@@ -301,4 +366,9 @@ func (this *DB) Trade(c *tdx.Client, code string, dates []string) ([]*Trade, err
 	})
 
 	return list[0], nil
+}
+
+type Handler struct {
+	Name    string
+	Handler func(pool *Pool) ([]*model.Kline, error)
 }

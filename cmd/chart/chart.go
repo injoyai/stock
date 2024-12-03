@@ -8,8 +8,11 @@ import (
 	"github.com/injoyai/logs"
 	"github.com/injoyai/lorca"
 	"github.com/injoyai/stock/data/tdx"
+	"github.com/injoyai/stock/data/tdx/model"
 	"github.com/injoyai/stock/gui"
+	tdx2 "github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
+	"math"
 	"time"
 )
 
@@ -41,7 +44,7 @@ func main() {
 
 		return c.WithOpenDB(code, func(db *tdx.DB) error {
 
-			return c.Pool.Retry(func(cli *tdx.Cli) error {
+			return c.Pool.Retry(func(cli *tdx2.Client) error {
 				quote, err := db.Quote(cli)
 				if err != nil {
 					return err
@@ -53,12 +56,13 @@ func main() {
 						return nil
 
 					default:
-						ls, err := c.KlineReal(code, nil)
+						ls, err := c.Real.Get(code, nil)
 						if err != nil {
 							logs.Err(err)
 							continue
 						}
-						data := ls.ChartDay(quote.K.Last.Float64(), c.GetCodeName(code))
+
+						data := ChartDay(ls, quote.K.Last.Float64(), c.Code.GetName(code))
 						data.Init()
 						app.Eval(fmt.Sprintf("loading(%s,%f,%f)", conv.String(data), data.Min, data.Max))
 
@@ -71,4 +75,39 @@ func main() {
 		})
 
 	})
+}
+
+func ChartDay(ls []*model.Kline, last float64, name string) *gui.Chart {
+	dayMinute := 60 * 4
+	c := &gui.Chart{
+		Labels: make([]string, dayMinute),
+		Datasets: []*gui.ChartItem{{
+			Label: name,
+			Data:  make([]float64, len(ls)),
+		}},
+	}
+
+	now := time.Date(2024, 1, 1, 9, 31, 0, 0, time.Local)
+	for i := 0; i < dayMinute/2; i++ {
+		c.Labels[i] = now.Add(time.Minute * time.Duration(i)).Format("15:04")
+	}
+
+	now = time.Date(2024, 1, 1, 13, 0, 0, 0, time.Local)
+	for i := 0; i < dayMinute/2; i++ {
+		c.Labels[i+dayMinute/2] = now.Add(time.Minute * time.Duration(i)).Format("15:04")
+	}
+
+	var sub float64
+	for i, v := range ls {
+		c.Datasets[0].Data[i] = v.Close
+		val := math.Abs(v.Close - last)
+		if val > sub {
+			sub = val
+		}
+	}
+
+	c.Max = (last + sub) * 1.02
+	c.Min = (last - sub) * 0.98
+
+	return c
 }

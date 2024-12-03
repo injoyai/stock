@@ -5,7 +5,7 @@ import (
 	"github.com/injoyai/goutil/database/xorms"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/logs"
-	v1 "github.com/injoyai/stock/data/tdx"
+	"github.com/injoyai/stock/data/tdx/model"
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
 	"github.com/robfig/cron/v3"
@@ -36,7 +36,7 @@ func NewCode(hosts []string, filename string, op ...client.Option) (*Code, error
 		return nil, err
 	}
 
-	err = db.Sync2(new(v1.Code))
+	err = db.Sync2(new(model.Code))
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,9 @@ func NewCode(hosts []string, filename string, op ...client.Option) (*Code, error
 }
 
 type Code struct {
-	*tdx.Client                     //客户端
-	db          *xorms.Engine       //数据库实例
-	Codes       map[string]*v1.Code //股票缓存
+	*tdx.Client                        //客户端
+	db          *xorms.Engine          //数据库实例
+	Codes       map[string]*model.Code //股票缓存
 }
 
 // GetName 获取股票名称
@@ -113,7 +113,7 @@ func (this *Code) Update() error {
 	if err != nil {
 		return err
 	}
-	codeMap := make(map[string]*v1.Code)
+	codeMap := make(map[string]*model.Code)
 	for _, code := range codes {
 		codeMap[code.Exchange+code.Code] = code
 	}
@@ -122,11 +122,11 @@ func (this *Code) Update() error {
 }
 
 // Code 更新股票并返回结果
-func (this *Code) Code(byDatabase bool) ([]*v1.Code, error) {
+func (this *Code) Code(byDatabase bool) ([]*model.Code, error) {
 	logs.Debug("更新代码信息")
 
 	//2. 查询数据库所有股票
-	list := []*v1.Code(nil)
+	list := []*model.Code(nil)
 	if err := this.db.Find(&list); err != nil {
 		return nil, err
 	}
@@ -136,14 +136,14 @@ func (this *Code) Code(byDatabase bool) ([]*v1.Code, error) {
 		return list, nil
 	}
 
-	mCode := make(map[string]*v1.Code, len(list))
+	mCode := make(map[string]*model.Code, len(list))
 	for _, v := range list {
 		mCode[v.Code] = v
 	}
 
 	//3. 从服务器获取所有股票代码
-	insert := []*v1.Code(nil)
-	update := []*v1.Code(nil)
+	insert := []*model.Code(nil)
+	update := []*model.Code(nil)
 	for _, exchange := range []protocol.Exchange{protocol.ExchangeSH, protocol.ExchangeSZ} {
 		resp, err := this.Client.GetCodeAll(exchange)
 		if err != nil {
@@ -153,10 +153,10 @@ func (this *Code) Code(byDatabase bool) ([]*v1.Code, error) {
 			if _, ok := mCode[v.Code]; ok {
 				if mCode[v.Code].Name != v.Name {
 					mCode[v.Code].Name = v.Name
-					update = append(update, v1.NewCode(exchange, v))
+					update = append(update, model.NewCode(exchange, v))
 				}
 			} else {
-				code := v1.NewCode(exchange, v)
+				code := model.NewCode(exchange, v)
 				insert = append(insert, code)
 				list = append(list, code)
 			}

@@ -3,7 +3,7 @@ package tdx
 import (
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
-	v1 "github.com/injoyai/stock/data/tdx"
+	"github.com/injoyai/stock/data/tdx/model"
 	"github.com/injoyai/tdx"
 	"time"
 )
@@ -22,16 +22,16 @@ type Real struct {
 	*tdx.Client
 }
 
-func (this *Real) Get(code string, cache v1.Klines) (v1.Klines, error) {
+func (this *Real) Get(code string, cache model.Klines) (model.Klines, error) {
 
-	last := &v1.Kline{Unix: times.IntegerDay(time.Now()).Unix()}
+	last := &model.Kline{Unix: times.IntegerDay(time.Now()).Unix()}
 	if len(cache) > 0 {
 		last = cache[len(cache)-1]   //获取最后的数据,用于截止获取数据
 		cache = cache[len(cache)-1:] //删除最后一分钟的数据,最后一分钟实时统计的,用新数据更新
 	}
 
 	size := uint16(800)
-	list := v1.Klines(nil)
+	list := model.Klines(nil)
 	for {
 		resp, err := this.Client.GetKlineMinute(code, 0, size)
 		if err != nil {
@@ -42,7 +42,7 @@ func (this *Real) Get(code string, cache v1.Klines) (v1.Klines, error) {
 		for _, v := range resp.List {
 			//获取今天有效的分时图
 			if last.Unix <= v.Time.Unix() {
-				list = append(list, v1.NewKline(code, v, v.Time))
+				list = append(list, model.NewKline(code, v, v.Time))
 			} else {
 				done = true
 			}

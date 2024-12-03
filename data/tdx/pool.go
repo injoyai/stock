@@ -71,7 +71,7 @@ func (this *Pool) Do(f func(c *tdx.Client) error) error {
 	return f(c)
 }
 
-func (this *Pool) Retry(f func(c *Cli) error, retry int) error {
+func (this *Pool) Retry(f func(c *tdx.Client) error, retry int) error {
 	c, err := this.Get()
 	if err != nil {
 		return err
