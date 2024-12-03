@@ -47,7 +47,7 @@ func compareZip(file *os.File, zipWriter *zip.Writer, prefix string, join bool) 
 	if join {
 		header.Name = filepath.Join(prefix, header.Name)
 		prefix = filepath.Join(prefix, fileInfo.Name())
-		//header.Name = strings.ReplaceAll(header.Name, "\\", "/")
+		header.Name = strings.ReplaceAll(header.Name, "\\", "/")
 		if fileInfo.IsDir() {
 			header.Name += "/"
 		} else {
