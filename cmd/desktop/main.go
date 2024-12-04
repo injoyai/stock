@@ -55,7 +55,7 @@ func main() {
 			s.SetIco(IcoStock)
 			s.AddMenu().SetName("版本: v0.2.4").Disable()
 			next := s.AddMenu().SetName("下次:").Disable()
-			start := s.AddMenu().SetName("立即执行").Disable()
+			start := s.AddMenu().SetName("执行").Disable()
 			go func() {
 				task := cron.New(cron.WithSeconds())
 				task.Start()
@@ -66,11 +66,15 @@ func main() {
 				logs.PanicErr(err)
 
 				f := func() {
+					defer func() {
+						next.SetName(task.Entry(taskid).Next.Format("下次: 01-02 15:04"))
+						start.SetName("执行").Enable()
+						notice.DefaultWindows.Publish(&notice.Message{Content: "数据更新完成"})
+					}()
 					start.Disable().SetName("执行中...")
-					defer start.SetName("立即执行").Enable()
 					codes := cfg.GetStrings("codes", c.Code.GetStocks())
 					logs.PrintErr(update(s, c, codes, conf.Limit))
-					next.SetName(task.Entry(taskid).Next.Format("下次: " + time.DateTime))
+
 				}
 				start.OnClick(func(m *tray.Menu) { f() })
 
