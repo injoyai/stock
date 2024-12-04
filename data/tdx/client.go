@@ -21,9 +21,9 @@ func (this *Config) init() *Config {
 		this.Hosts = tdx.Hosts
 	}
 	if len(this.Database) == 0 {
-		execName := oss.ExecDir()
+		execDir := oss.ExecDir()
 		switch {
-		case strings.HasPrefix(execName, "C:\\Users"):
+		case strings.HasPrefix(execDir, "C:\\Users") && !strings.HasSuffix(execDir, "\\Start Menu\\Programs\\Startup"):
 			//默认IDE缓存的地方,则读取代码位置的配置
 			//C:\Users\Admin\AppData\Local\JetBrains\GoLand2024.1\tmp\GoLand\___1go_build_github_com_injoyai_stock_cmd_desktop.exe
 			this.Database = "./database/"

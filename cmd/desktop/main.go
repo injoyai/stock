@@ -26,7 +26,7 @@ func init() {
 		func() conv.IGetVar {
 			execDir := oss.ExecDir()
 			switch {
-			case strings.HasPrefix(execDir, "C:\\Users"):
+			case strings.HasPrefix(execDir, "C:\\Users") && !strings.HasSuffix(execDir, "\\Start Menu\\Programs\\Startup"):
 				return cfg.WithFile("./config/config.yaml")
 			}
 			return cfg.WithFile(filepath.Join(execDir, "/config/config.yaml"))
