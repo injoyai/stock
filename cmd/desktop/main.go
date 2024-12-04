@@ -53,32 +53,41 @@ func main() {
 	tray.Run(
 		func(s *tray.Stray) {
 			s.SetIco(IcoStock)
+			s.AddMenu().SetName("版本: v0.2.4").Disable()
+			next := s.AddMenu().SetName("下次:").Disable()
+			start := s.AddMenu().SetName("立即执行").Disable()
 			go func() {
 				task := cron.New(cron.WithSeconds())
 				task.Start()
+				taskid := cron.EntryID(0)
 
 				//连接客户端
 				c, err := tdx.Dial(conf)
 				logs.PanicErr(err)
 
+				f := func() {
+					start.Disable().SetName("执行中...")
+					defer start.SetName("立即执行").Enable()
+					codes := cfg.GetStrings("codes", c.Code.GetStocks())
+					logs.PrintErr(update(s, c, codes, conf.Limit))
+					next.SetName(task.Entry(taskid).Next.Format("下次: " + time.DateTime))
+				}
+				start.OnClick(func(m *tray.Menu) { f() })
+
 				//每天下午16点进行数据更新
-				task.AddFunc("0 0 16 * * *", func() {
+				taskid, _ = task.AddFunc("0 0 16 * * *", func() {
 					if c.Workday.TodayIs() {
 						notice.DefaultWindows.Publish(&notice.Message{
 							Content: "开始更新数据...",
 						})
-						codes := cfg.GetStrings("codes", c.Code.GetStocks())
-						err = update(s, c, codes, conf.Limit)
-						logs.PrintErr(err)
+						f()
 					}
 				})
 
 				//更新数据
-				codes := cfg.GetStrings("codes", c.Code.GetStocks())
-				logs.PrintErr(update(s, c, codes, conf.Limit))
+				f()
 			}()
 		},
-		tray.WithLabel("版本: v0.2.4"),
 		WithStartup(),
 		tray.WithSeparator(),
 		tray.WithExit(),
