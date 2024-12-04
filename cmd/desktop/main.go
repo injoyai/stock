@@ -77,7 +77,7 @@ func main() {
 				logs.PrintErr(update(s, c, codes, conf.Limit))
 			}()
 		},
-		tray.WithLabel("版本: v0.2.1"),
+		tray.WithLabel("版本: v0.2.2"),
 		WithStartup(),
 		tray.WithSeparator(),
 		tray.WithExit(),
