@@ -268,7 +268,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		for _, v := range list {
 			if v.Unix == last.Unix {
 				//更新数据库的最后一条数据
-				if _, err := session.Table(table).Where("Unix=?", v.Unix).Update(v); err != nil {
+				if _, err := session.Table(table).Where("Node=?", v.Node).Update(v); err != nil {
 					return err
 				}
 			} else {
