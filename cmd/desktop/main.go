@@ -55,6 +55,7 @@ func main() {
 			s.SetIco(IcoStock)
 			go func() {
 				task := cron.New(cron.WithSeconds())
+				task.Start()
 
 				//连接客户端
 				c, err := tdx.Dial(conf)
