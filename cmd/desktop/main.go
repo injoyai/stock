@@ -77,7 +77,7 @@ func main() {
 				logs.PrintErr(update(s, c, codes, conf.Limit))
 			}()
 		},
-		tray.WithLabel("版本: v0.2.2"),
+		tray.WithLabel("版本: v0.2.3"),
 		WithStartup(),
 		tray.WithSeparator(),
 		tray.WithExit(),
@@ -104,8 +104,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 		go func(code string) {
 			defer func() {
 				ch.Done()
-				plan.Add()
-				s.SetHint(plan.String())
+				s.SetHint(plan.Add().String())
 			}()
 			c.WithOpenDB(code, func(db *tdx.DB) error {
 				for _, v := range db.AllKlineHandler() {
@@ -128,8 +127,10 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 	ch.Wait()
 
 	//进行压缩操作
+	s.SetHint(plan.CompressStart().String())
 	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(c.Cfg.Database, "csv.zip"))
 	logs.PrintErr(err)
+	s.SetHint(plan.CompressEnd().String())
 
 	return nil
 }
