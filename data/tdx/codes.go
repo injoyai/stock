@@ -123,7 +123,6 @@ func (this *Code) Update() error {
 
 // Code 更新股票并返回结果
 func (this *Code) Code(byDatabase bool) ([]*model.Code, error) {
-	logs.Debug("更新代码信息")
 
 	//2. 查询数据库所有股票
 	list := []*model.Code(nil)

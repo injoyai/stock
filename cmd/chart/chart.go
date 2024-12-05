@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"github.com/injoyai/conv"
 	"github.com/injoyai/goutil/g"
@@ -9,12 +10,16 @@ import (
 	"github.com/injoyai/lorca"
 	"github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/stock/data/tdx/model"
-	"github.com/injoyai/stock/gui"
 	tdx2 "github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
 	"math"
 	"time"
 )
+
+//go:embed chart.html
+var ChartHtml string
+
+var Colors = []string{"rgba(75, 192, 192)", "rgba(192, 75, 75)", "rgb(255, 99, 132)", "rgb(54, 162, 235)", "rgb(255, 206, 86)", "rgb(75, 192, 192)", "rgb(153, 102, 255)", "rgb(255, 159, 64)"}
 
 func main() {
 
@@ -39,7 +44,7 @@ func main() {
 	lorca.Run(&lorca.Config{
 		Width:  700,
 		Height: 400,
-		Html:   gui.ChartHtml,
+		Html:   ChartHtml,
 	}, func(app lorca.APP) error {
 
 		return c.WithOpenDB(code, func(db *tdx.DB) error {
@@ -77,11 +82,11 @@ func main() {
 	})
 }
 
-func ChartDay(ls []*model.Kline, last float64, name string) *gui.Chart {
+func ChartDay(ls []*model.Kline, last float64, name string) *Chart {
 	dayMinute := 60 * 4
-	c := &gui.Chart{
+	c := &Chart{
 		Labels: make([]string, dayMinute),
-		Datasets: []*gui.ChartItem{{
+		Datasets: []*ChartItem{{
 			Label: name,
 			Data:  make([]float64, len(ls)),
 		}},
