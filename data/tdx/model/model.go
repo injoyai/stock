@@ -123,6 +123,12 @@ type Kline struct {
 	InDate    int64   `json:"inDate" xorm:"created"` //创建时间
 }
 
+// LimitUp 是否涨停
+func (this *Kline) LimitUp() bool {
+
+	return false
+}
+
 func NewKlineTable(suffix string) *KlineTable {
 	return &KlineTable{
 		tableName: "Kline" + suffix,
@@ -147,6 +153,15 @@ type Klines []*Kline
 
 func (this Klines) Len() int {
 	return len(this)
+}
+
+func (this Klines) Get(index int) *Kline {
+	if index < 0 && -index <= len(this) {
+		return this[len(this)+index]
+	} else if index >= 0 && index < len(this) {
+		return this[index]
+	}
+	return nil
 }
 
 // Avg k线的平均值

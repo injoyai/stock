@@ -7,10 +7,10 @@ import (
 
 func NewPlan(total int) *Plan {
 	return &Plan{
-		Total:        uint32(total),
-		Current:      0,
-		UpdateTime:   time.Now(),
-		CompressTime: time.Now(),
+		Total:      uint32(total),
+		Current:    0,
+		UpdateTime: time.Now(),
+		//CompressTime: time.Now(),
 	}
 }
 
