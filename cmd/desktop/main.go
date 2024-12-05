@@ -53,7 +53,8 @@ func main() {
 	tray.Run(
 		func(s *tray.Stray) {
 			s.SetIco(IcoStock)
-			s.AddMenu().SetName("版本: v0.2.4").Disable()
+			s.AddMenu().SetName("版本: v0.2.5").Disable()
+			last := s.AddMenu().SetName("上次:").Disable()
 			next := s.AddMenu().SetName("下次:").Disable()
 			start := s.AddMenu().SetName("执行").Disable()
 			go func() {
@@ -67,6 +68,7 @@ func main() {
 
 				f := func() {
 					defer func() {
+						last.SetName(time.Now().Format("上次: 01-02 15:04"))
 						next.SetName(task.Entry(taskid).Next.Format("下次: 01-02 15:04"))
 						start.SetName("执行").Enable()
 						notice.DefaultWindows.Publish(&notice.Message{Content: "数据更新完成"})
