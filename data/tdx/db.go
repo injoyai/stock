@@ -266,7 +266,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 	//4. 将缺的数据入库
 	err = this.db.SessionFunc(func(session *xorm.Session) error {
 		for _, v := range list {
-			if v.Unix == last.Unix {
+			if v.Node == last.Node {
 				//更新数据库的最后一条数据
 				if _, err := session.Table(table).Where("Node=?", v.Node).Update(v); err != nil {
 					return err
