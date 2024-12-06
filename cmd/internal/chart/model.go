@@ -1,4 +1,4 @@
-package main
+package chart
 
 type Chart struct {
 	Max      float64      `json:"max"`
