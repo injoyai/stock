@@ -2,10 +2,9 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"github.com/injoyai/conv"
-	"github.com/injoyai/goutil/g"
-	"github.com/injoyai/ios/client"
 	"github.com/injoyai/logs"
 	"github.com/injoyai/lorca"
 	"github.com/injoyai/stock/data/tdx"
@@ -13,47 +12,53 @@ import (
 	tdx2 "github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
 	"math"
+	"strings"
 	"time"
 )
 
 //go:embed chart.html
 var ChartHtml string
 
-var Colors = []string{"rgba(75, 192, 192)", "rgba(192, 75, 75)", "rgb(255, 99, 132)", "rgb(54, 162, 235)", "rgb(255, 206, 86)", "rgb(75, 192, 192)", "rgb(153, 102, 255)", "rgb(255, 159, 64)"}
-
 func main() {
 
-	code := ""
-
-	for {
-		code = g.Input("请输入代码(例sz000001):")
-		_, _, err := protocol.DecodeCode(code)
-		if err != nil {
-			logs.Err(err)
-		} else {
-			break
-		}
-	}
-
-	//连接客户端
-	c, err := tdx.Dial(&tdx.Config{}, func(c *client.Client) {
-		c.Logger.Debug(false)
-	})
-	logs.PanicErr(err)
-
 	lorca.Run(&lorca.Config{
-		Width:  700,
-		Height: 400,
+		Width:  300,
+		Height: 200,
 		Html:   ChartHtml,
 	}, func(app lorca.APP) error {
 
-		return c.WithOpenDB(code, func(db *tdx.DB) error {
+		//连接客户端
+		var c = &Client{}
+		var err error
+		for ; ; <-time.After(time.Second * 3) {
+			c.Real, err = tdx.NewReal(tdx2.Hosts)
+			if err == nil {
+				break
+			}
+			app.Eval(fmt.Sprintf("notice('%s')", err.Error()))
+		}
 
-			return c.Pool.Retry(func(cli *tdx2.Client) error {
-				quote, err := db.Quote(cli)
+		return app.Bind("run", func() {
+
+			err = func() error {
+
+				code := app.GetValueByID("input")
+				code = strings.ToLower(code)
+
+				if len(code) != 8 || (code[:2] != "sh" && code[:2] != "sz") {
+					return errors.New("股票代码不正确")
+				}
+
+				c.code = code
+				quote, err := c.Quote()
 				if err != nil {
 					return err
 				}
+
+				b, _ := app.Bounds()
+				b.Width = 800
+				b.Height = 600
+				app.SetBounds(b)
 
 				for ; ; <-time.After(time.Second * 2) {
 					select {
@@ -67,19 +72,35 @@ func main() {
 							continue
 						}
 
-						data := ChartDay(ls, quote.K.Last.Float64(), c.Code.GetName(code))
+						data := ChartDay(ls, quote.K.Last.Float64(), code)
 						data.Init()
 						app.Eval(fmt.Sprintf("loading(%s,%f,%f)", conv.String(data), data.Min, data.Max))
 
 					}
 				}
-
-			}, 1)
-
-			return nil
+			}()
+			if err != nil {
+				app.Eval(fmt.Sprintf("notice('%s')", err.Error()))
+			}
 		})
 
 	})
+}
+
+type Client struct {
+	code string
+	*tdx.Real
+}
+
+func (this *Client) Quote() (*protocol.Quote, error) {
+	resp, err := this.GetQuote(this.code)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, errors.New("not found")
+	}
+	return resp[0], nil
 }
 
 func ChartDay(ls []*model.Kline, last float64, name string) *Chart {
