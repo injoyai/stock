@@ -92,6 +92,8 @@ func main() {
 
 				//更新数据
 				f()
+
+				<-s.Done()
 			}()
 		},
 		WithStartup(),
