@@ -49,6 +49,86 @@
             margin-right: 5px;
         }
 
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #000000;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #000000;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover {
+            color: #218838;
+        }
+
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .modal-content input {
+            width: 85%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .modal-content button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .modal-content button:hover {
+            background-color: #218838;
+        }
+
+        .modal-content button:disabled {
+            background-color: #dadada;
+        }
+
+        .modal-content h2 {
+
+        }
+
         .notification {
             position: fixed;
             top: 10px;
@@ -86,7 +166,11 @@
 </head>
 <body>
 <div id="container">
-    <div style="width: 90%; height: 80%;">
+    <div id="myInput" class="modal-content">
+        <input id="input" placeholder="sz000001">
+        <button id="draw">开始</button>
+    </div>
+    <div id="canvas" style="width: 100%; height: 100%;" hidden="hidden">
         <canvas id="myCanvas"></canvas>
     </div>
     <div class="legend" id="legend"></div>
@@ -94,6 +178,10 @@
 <script>
     var canvas = document.getElementById('myCanvas');
     var ctx = canvas.getContext('2d');
+    var draw = document.getElementById('draw');
+    draw.onclick = function () {
+       run()
+    }
 
     var chartData = {
         labels: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
@@ -219,12 +307,20 @@
         });
     }
 
+    function run() {
+    }
 
     function loading(data, min, max) {
-        var notification = document.createElement('div');
-        notification.className = 'notification';
+        document.getElementById('myInput').hidden = true;
+        document.getElementById('canvas').hidden = false;
+
+        var canvas = document.getElementById('myCanvas');
+        var ctx = canvas.getContext('2d');
+
+        //var notification = document.createElement('div');
+        //notification.className = 'notification';
         //notification.innerText = '加载中...';
-        document.body.appendChild(notification);
+        // document.body.appendChild(notification);
 
         canvas.width = document.getElementById('container').clientWidth * 0.9;
         canvas.height = document.getElementById('container').clientHeight * 0.8;
@@ -232,14 +328,27 @@
         drawChart(data, min, max);
         drawLegend(data);
 
-        notification.innerText = '成功';
+        // notification.innerText = '成功';
+        // setTimeout(function () {
+        //     document.body.removeChild(notification);
+        // }, 2000);
+
+    }
+
+    function notice(msg) {
+        // 创建一个新的div元素作为通知
+        var notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerText = msg; // 设置初始消息
+        document.body.appendChild(notification); // 将通知添加到body中
+
         setTimeout(function () {
             document.body.removeChild(notification);
         }, 2000);
 
     }
 
-    function notice(msg, handler, afterMsg, delay) {
+    function _notice(msg, handler, afterMsg, delay) {
         // 创建一个新的div元素作为通知
         var notification = document.createElement('div');
         notification.className = 'notification';

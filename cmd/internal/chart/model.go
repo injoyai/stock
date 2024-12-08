@@ -1,4 +1,4 @@
-package main
+package chart
 
 type Chart struct {
 	Max      float64      `json:"max"`
@@ -42,3 +42,5 @@ func (this *ChartItem) init(i int) {
 		this.Tension = 0.4
 	}
 }
+
+var Colors = []string{"rgba(75, 192, 192)", "rgba(192, 75, 75)", "rgb(255, 99, 132)", "rgb(54, 162, 235)", "rgb(255, 206, 86)", "rgb(75, 192, 192)", "rgb(153, 102, 255)", "rgb(255, 159, 64)"}

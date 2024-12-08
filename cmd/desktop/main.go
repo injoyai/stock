@@ -10,6 +10,7 @@ import (
 	"github.com/injoyai/goutil/oss/tray"
 	"github.com/injoyai/goutil/oss/win"
 	"github.com/injoyai/logs"
+	"github.com/injoyai/stock/cmd/internal/chart"
 	"github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/stock/data/tdx/model"
 	"github.com/injoyai/stock/util/csv"
@@ -53,7 +54,7 @@ func main() {
 	tray.Run(
 		func(s *tray.Stray) {
 			s.SetIco(IcoStock)
-			s.AddMenu().SetName("版本: v0.2.6").Disable()
+			s.AddMenu().SetName("版本: v0.2.7").Disable()
 			last := s.AddMenu().SetName("上次:").Disable()
 			next := s.AddMenu().SetName("下次:").Disable()
 			start := s.AddMenu().SetName("执行").Disable()
@@ -96,6 +97,7 @@ func main() {
 				<-s.Done()
 			}()
 		},
+		WithChart(),
 		WithStartup(),
 		tray.WithSeparator(),
 		tray.WithExit(),
@@ -172,6 +174,14 @@ func toCsv(c *tdx.Client, filename string, kline model.Klines) error {
 
 	return oss.New(filename, buf)
 
+}
+
+func WithChart() tray.Option {
+	return func(s *tray.Stray) {
+		s.AddMenu().SetName("实时").OnClick(func(m *tray.Menu) {
+			chart.Show()
+		})
+	}
 }
 
 func WithStartup() tray.Option {
