@@ -75,10 +75,10 @@ func main() {
 					}()
 					if up {
 						start.Disable().SetName("执行中...")
-						notice.DefaultWindows.Publish(&notice.Message{Content: "开始更新数据..."})
+						notice.DefaultWindows.Publish(&notice.Message{Title: "Stock Desktop", Content: "开始更新数据..."})
 						defer func() {
 							start.SetName("执行").Enable()
-							notice.DefaultWindows.Publish(&notice.Message{Content: "数据更新完成"})
+							notice.DefaultWindows.Publish(&notice.Message{Title: "Stock Desktop", Content: "数据更新完成"})
 						}()
 						codes := cfg.GetStrings("codes", c.Code.GetStocks())
 						logs.PrintErr(update(s, c, codes, conf.Limit))
