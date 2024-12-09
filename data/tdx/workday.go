@@ -55,13 +55,22 @@ type workday struct {
 func (this *workday) Update() error {
 	//获取平安银行的日K线,用作历史是否节假日的判断依据
 	//判断日K线是否拉取过
-	lastWorkday := new(model.Workday)
-	has, err := this.db.Desc("ID").Get(lastWorkday)
-	if err != nil {
+
+	//获取全部工作日
+	all := []*model.Workday(nil)
+	if err := this.db.Find(&all); err != nil {
 		return err
 	}
+	var lastWorkday *model.Workday
+	if len(all) > 0 {
+		lastWorkday = all[len(all)-1]
+	}
+	for _, v := range all {
+		this.cache.Set(uint64(v.Unix), true)
+	}
+
 	now := time.Now()
-	if !has || lastWorkday.Unix < times.IntegerDay(now).Unix() {
+	if lastWorkday == nil || lastWorkday.Unix < times.IntegerDay(now).Unix() {
 		resp, err := this.Client.GetKlineDayAll("sz000001")
 		if err != nil {
 			return err
@@ -86,7 +95,8 @@ func (this *workday) Update() error {
 
 // Is 是否是工作日
 func (this *workday) Is(t time.Time) bool {
-	return this.cache.Get(uint64(t.Unix()))
+	logs.Debug(uint64(times.IntegerDay(t).Add(time.Hour * 15).Unix()))
+	return this.cache.Get(uint64(times.IntegerDay(t).Add(time.Hour * 15).Unix()))
 }
 
 // TodayIs 今天是否是工作日

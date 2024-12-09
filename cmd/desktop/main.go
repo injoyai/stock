@@ -38,6 +38,7 @@ func init() {
 			&cfg.Flag{Name: "limit", Usage: "协程数量"},
 			&cfg.Flag{Name: "database", Usage: "数据存储位置"},
 			&cfg.Flag{Name: "codes", Usage: "爬取的股票代码(sz000001)"},
+			&cfg.Flag{Name: "runFirst", Usage: "启动立马运行"},
 		),
 	)
 }
@@ -54,45 +55,44 @@ func main() {
 	tray.Run(
 		func(s *tray.Stray) {
 			s.SetIco(IcoStock)
-			s.AddMenu().SetName("版本: v0.2.7").Disable()
+			s.AddMenu().SetName("版本: v0.2.8").Disable()
 			last := s.AddMenu().SetName("上次:").Disable()
 			next := s.AddMenu().SetName("下次:").Disable()
-			start := s.AddMenu().SetName("执行").Disable()
+			start := s.AddMenu().SetName("执行")
 			go func() {
 				task := cron.New(cron.WithSeconds())
-				task.Start()
+
 				taskid := cron.EntryID(0)
 
 				//连接客户端
 				c, err := tdx.Dial(conf)
 				logs.PanicErr(err)
 
-				f := func() {
+				f := func(up bool) {
 					defer func() {
 						last.SetName(time.Now().Format("上次: 01-02 15:04"))
 						next.SetName(task.Entry(taskid).Next.Format("下次: 01-02 15:04"))
-						start.SetName("执行").Enable()
-						notice.DefaultWindows.Publish(&notice.Message{Content: "数据更新完成"})
 					}()
-					start.Disable().SetName("执行中...")
-					codes := cfg.GetStrings("codes", c.Code.GetStocks())
-					logs.PrintErr(update(s, c, codes, conf.Limit))
+					if up {
+						start.Disable().SetName("执行中...")
+						notice.DefaultWindows.Publish(&notice.Message{Content: "开始更新数据..."})
+						defer func() {
+							start.SetName("执行").Enable()
+							notice.DefaultWindows.Publish(&notice.Message{Content: "数据更新完成"})
+						}()
+						codes := cfg.GetStrings("codes", c.Code.GetStocks())
+						logs.PrintErr(update(s, c, codes, conf.Limit))
+					}
 
 				}
-				start.OnClick(func(m *tray.Menu) { f() })
+				start.OnClick(func(m *tray.Menu) { f(true) })
 
 				//每天下午16点进行数据更新
-				taskid, _ = task.AddFunc("0 0 16 * * *", func() {
-					if c.Workday.TodayIs() {
-						notice.DefaultWindows.Publish(&notice.Message{
-							Content: "开始更新数据...",
-						})
-						f()
-					}
-				})
+				taskid, _ = task.AddFunc("0 0 16 * * *", func() { f(c.Workday.TodayIs()) })
+				task.Start()
 
 				//更新数据
-				f()
+				f(cfg.GetBool("runFirst", true))
 
 				<-s.Done()
 			}()
