@@ -223,7 +223,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 	table := model.NewKlineTable(suffix)
 	logs.Debug("更新:", table.TableName())
 
-	//2. 查询数据库的数据
+	//2. 查询数据库的数据,主要耗时点
 	cache := []*model.Kline(nil)
 	err := this.db.Table(table).Find(&cache)
 	if err != nil {
@@ -240,6 +240,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 	//3. 从服务器拉取数据
 	list := []*model.Kline(nil)
 	size := uint16(800)
+	size = 8
 	for start := uint16(0); ; start += size {
 		resp, err := get(this.code, start, size)
 		if err != nil {
@@ -261,6 +262,12 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		if resp.Count < size || done {
 			break
 		}
+
+		size *= 10
+		if size > 800 {
+			size = 800
+		}
+		logs.Debug("次数++")
 	}
 
 	//4. 将缺的数据入库
