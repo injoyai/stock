@@ -61,7 +61,7 @@ func main() {
 			start := s.AddMenu().SetName("执行")
 			go func() {
 				task := cron.New(cron.WithSeconds())
-
+				task.Start()
 				taskid := cron.EntryID(0)
 
 				//连接客户端
@@ -88,8 +88,7 @@ func main() {
 				start.OnClick(func(m *tray.Menu) { f(true) })
 
 				//每天下午16点进行数据更新
-				taskid, _ = task.AddFunc("0 0 16 * * *", func() { f(c.Workday.TodayIs()) })
-				task.Start()
+				taskid, _ = task.AddFunc("0 23 8 * * *", func() { f(c.Workday.TodayIs()) })
 
 				//更新数据
 				f(cfg.GetBool("runFirst", true))

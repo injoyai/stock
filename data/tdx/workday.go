@@ -95,7 +95,6 @@ func (this *workday) Update() error {
 
 // Is 是否是工作日
 func (this *workday) Is(t time.Time) bool {
-	logs.Debug(uint64(times.IntegerDay(t).Add(time.Hour * 15).Unix()))
 	return this.cache.Get(uint64(times.IntegerDay(t).Add(time.Hour * 15).Unix()))
 }
 
