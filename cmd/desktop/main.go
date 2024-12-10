@@ -145,7 +145,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 
 	ch.Wait()
 
-	//进行压缩操作
+	//进行压缩操作,250ms
 	s.SetHint(plan.CompressStart().String())
 	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(c.Cfg.Database, "csv.zip"))
 	logs.PrintErr(err)
