@@ -36,8 +36,8 @@ func NewWorkday(hosts []string, filename string, op ...client.Option) (*workday,
 		cache:  maps.NewBit(),
 	}
 
-	// 每天早上8点更新数据
-	cron.New(cron.WithSeconds()).AddFunc("0 0 8 * * *", func() {
+	// 每天早上9点更新数据
+	cron.New(cron.WithSeconds()).AddFunc("0 0 9 * * *", func() {
 		err := w.Update()
 		logs.PrintErr(err)
 	})
