@@ -1,6 +1,6 @@
-runFirst: false
+runFirst: true
 number: 1
 limit: 1
 codes:
   - sz000001
-  - sz000002
+  #- sz000002

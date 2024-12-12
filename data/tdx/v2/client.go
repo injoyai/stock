@@ -7,13 +7,25 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
+
+type QueueConfig struct {
+	OpenCap   int
+	OpenLimit int
+	PullCap   int
+	PullLimit int
+	SaveCap   int
+	SaveLimit int
+	Retry     int
+}
 
 type Config struct {
 	Hosts    []string //服务端IP
 	Number   int      //客户端数量
 	Limit    int      //协程数量
 	Database string   //数据位置
+	Queue    QueueConfig
 }
 
 func (this *Config) init() *Config {
@@ -34,8 +46,36 @@ func (this *Config) init() *Config {
 	if this.Number <= 0 {
 		this.Number = 1
 	}
+	if this.Queue.OpenLimit <= 0 {
+		this.Queue.OpenLimit = 100
+	}
+	if this.Queue.OpenCap <= 0 {
+		this.Queue.OpenCap = 100
+	}
+	if this.Queue.PullCap <= 0 {
+		this.Queue.PullCap = 100
+	}
+	if this.Queue.PullLimit <= 0 {
+		this.Queue.PullLimit = 10
+	}
+	if this.Queue.SaveLimit <= 0 {
+		this.Queue.SaveLimit = 100
+	}
+	if this.Queue.SaveCap <= 0 {
+		this.Queue.SaveCap = 100
+	}
+	if this.Queue.Retry <= 0 {
+		this.Queue.Retry = 3
+	}
+
 	os.Mkdir(this.Database, os.ModePerm)
 	return this
+}
+
+func WithDebug(b ...bool) client.Option {
+	return func(c *client.Client) {
+		c.Logger.Debug(b...)
+	}
 }
 
 func Dial(cfg *Config, op ...client.Option) (cli *Client, err error) {
@@ -69,11 +109,12 @@ func Dial(cfg *Config, op ...client.Option) (cli *Client, err error) {
 		}
 	}
 
-	{ //连接池
-		cli.Pool, err = NewPool(cfg.Hosts, cfg.Number, option)
+	{ //更新队列
+		pool, err := NewPool(cfg.Hosts, cfg.Number, option)
 		if err != nil {
 			return nil, err
 		}
+		cli.update = NewUpdate(pool, cfg.Queue.OpenCap, cfg.Queue.OpenLimit, cfg.Queue.PullCap, cfg.Queue.PullLimit, cfg.Queue.SaveCap, cfg.Queue.SaveLimit, cfg.Queue.Retry)
 	}
 
 	return cli, nil
@@ -81,48 +122,32 @@ func Dial(cfg *Config, op ...client.Option) (cli *Client, err error) {
 
 type Client struct {
 	Cfg       *Config  //配置信息
-	Pool      *Pool    //连接池
 	Code      *Code    //股票代码
 	Workday   *workday //工作日
 	Real      *Real    //实时价格
-	Queue     *Queue   //
-	OnUpdated func()   //完成更新时间
+	update    *Update  //更新实例
+	OnUpdated func()   //完成更新事件
 }
 
-func (this *Client) WithOpenDB(code string, f func(db *DB) error) error {
-	db, err := NewDB(this.Cfg.Database, code)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	return f(db)
-}
-
-func (this *Client) Update(codes []string) {
-
+func (this *Client) Update(codes []string, onSaved func(code *PullDataAll)) {
+	this.update.OnSaved = onSaved
 	for _, code := range codes {
-
-		func() error {
+		this.update.Add(func() (*DBData, error) {
 			db, err := NewDB(this.Cfg.Database, code)
 			if err != nil {
-				return err
+				return nil, err
 			}
-
-			cache, err := db.GetCache()
-			if err != nil {
-				return err
-			}
-
-			this.Queue.Add(func() (*Cache, error) {
-				cache, err := db.GetCache()
-				if err != nil {
-					return err
-				}
-
-			})
-
-		}()
-
+			return db.GetCache()
+		})
 	}
+}
 
+func (this *Client) UpdateWait(codes []string, onSaved func(code *PullDataAll)) {
+	wg := &sync.WaitGroup{}
+	wg.Add(len(codes))
+	this.Update(codes, func(code *PullDataAll) {
+		onSaved(code)
+		wg.Done()
+	})
+	wg.Wait()
 }
