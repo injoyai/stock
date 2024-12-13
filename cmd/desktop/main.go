@@ -55,7 +55,7 @@ func main() {
 	tray.Run(
 		func(s *tray.Stray) {
 			s.SetIco(IcoStock)
-			s.AddMenu().SetName("版本: v0.2.8").Disable()
+			s.AddMenu().SetName("版本: v0.2.9").Disable()
 			last := s.AddMenu().SetName("上次:").Disable()
 			next := s.AddMenu().SetName("下次:").Disable()
 			start := s.AddMenu().SetName("执行")
@@ -147,7 +147,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 
 	//进行压缩操作,250ms
 	s.SetHint(plan.CompressStart().String())
-	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(c.Cfg.Database, "csv.zip"))
+	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", oss.ExecDir("/zip/csv.zip"))
 	logs.PrintErr(err)
 	s.SetHint(plan.CompressEnd().String())
 
