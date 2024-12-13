@@ -16,13 +16,19 @@ import (
 
 func NewWorkday(hosts []string, filename string, op ...client.Option) (*workday, error) {
 
-	c, err := tdx.DialWith(tdx.NewHostDial(hosts), op...)
+	c, err := tdx.DialWith(tdx.NewHostDial(hosts), func(c *client.Client) {
+		c.SetRedial()
+		c.SetOption(op...)
+	})
 	if err != nil {
+		logs.Err(err)
 		return nil, err
 	}
+	c.Wait.SetTimeout(time.Second * 5)
 
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {
+		logs.Err(err)
 		return nil, err
 	}
 
@@ -61,7 +67,7 @@ func (this *workday) Update() error {
 	if err := this.db.Find(&all); err != nil {
 		return err
 	}
-	var lastWorkday *model.Workday
+	var lastWorkday = &model.Workday{}
 	if len(all) > 0 {
 		lastWorkday = all[len(all)-1]
 	}
@@ -73,9 +79,11 @@ func (this *workday) Update() error {
 	if lastWorkday == nil || lastWorkday.Unix < times.IntegerDay(now).Unix() {
 		resp, err := this.Client.GetKlineDayAll("sz000001")
 		if err != nil {
+			logs.Err(err)
 			return err
 		}
 
+		logs.Debug(this.db.Engine == nil)
 		this.db.SessionFunc(func(session *xorm.Session) error {
 			for _, v := range resp.List {
 				if unix := v.Time.Unix(); unix > lastWorkday.Unix {

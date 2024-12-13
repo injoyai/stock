@@ -9,6 +9,7 @@ import (
 	"github.com/injoyai/tdx"
 	"github.com/injoyai/tdx/protocol"
 	"github.com/robfig/cron/v3"
+	"time"
 	"xorm.io/xorm"
 )
 
@@ -26,10 +27,14 @@ const (
 
 func NewCode(hosts []string, filename string, op ...client.Option) (*Code, error) {
 
-	c, err := tdx.DialWith(tdx.NewHostDial(hosts), op...)
+	c, err := tdx.DialWith(tdx.NewHostDial(hosts), func(c *client.Client) {
+		c.SetRedial()
+		c.SetOption(op...)
+	})
 	if err != nil {
 		return nil, err
 	}
+	c.Wait.SetTimeout(time.Second * 5)
 
 	db, err := sqlite.NewXorm(filename)
 	if err != nil {

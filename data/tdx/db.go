@@ -267,7 +267,6 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		if size > 800 {
 			size = 800
 		}
-		logs.Debug("次数++")
 	}
 
 	//4. 将缺的数据入库

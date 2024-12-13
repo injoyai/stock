@@ -3,6 +3,7 @@ package tdx
 import (
 	"github.com/injoyai/goutil/oss"
 	"github.com/injoyai/ios/client"
+	"github.com/injoyai/logs"
 	"github.com/injoyai/tdx"
 	"os"
 	"path/filepath"
@@ -51,6 +52,7 @@ func Dial(cfg *Config, op ...client.Option) (cli *Client, err error) {
 	{ //工作日信息
 		cli.Workday, err = NewWorkday(cfg.Hosts, filepath.Join(cfg.Database, "workday.db"), option)
 		if err != nil {
+			logs.Err(err)
 			return nil, err
 		}
 	}
@@ -58,6 +60,7 @@ func Dial(cfg *Config, op ...client.Option) (cli *Client, err error) {
 	{ //股票代码
 		cli.Code, err = NewCode(cfg.Hosts, filepath.Join(cfg.Database, "codes.db"), option)
 		if err != nil {
+			logs.Err(err)
 			return nil, err
 		}
 	}
@@ -65,6 +68,7 @@ func Dial(cfg *Config, op ...client.Option) (cli *Client, err error) {
 	{ //实时价格
 		cli.Real, err = NewReal(cfg.Hosts, option)
 		if err != nil {
+			logs.Err(err)
 			return nil, err
 		}
 	}
@@ -72,6 +76,7 @@ func Dial(cfg *Config, op ...client.Option) (cli *Client, err error) {
 	{ //连接池
 		cli.Pool, err = NewPool(cfg.Hosts, cfg.Number, option)
 		if err != nil {
+			logs.Err(err)
 			return nil, err
 		}
 	}

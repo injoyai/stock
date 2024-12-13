@@ -21,6 +21,8 @@ import (
 	"time"
 )
 
+var ZipPath = oss.ExecDir("/zip/")
+
 func init() {
 	logs.SetShowColor(false)
 	cfg.Init(
@@ -28,6 +30,7 @@ func init() {
 			execDir := oss.ExecDir()
 			switch {
 			case strings.HasPrefix(execDir, "C:\\Users") && !strings.HasSuffix(execDir, "\\Start Menu\\Programs\\Startup"):
+				ZipPath = "./zip/"
 				return cfg.WithFile("./config/config.yaml")
 			}
 			return cfg.WithFile(filepath.Join(execDir, "/config/config.yaml"))
@@ -147,7 +150,9 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 
 	//进行压缩操作,250ms
 	s.SetHint(plan.CompressStart().String())
-	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", oss.ExecDir("/zip/csv.zip"))
+	logs.Debug(ZipPath)
+	oss.NewDir(ZipPath)
+	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(ZipPath, "csv.zip"))
 	logs.PrintErr(err)
 	s.SetHint(plan.CompressEnd().String())
 
