@@ -48,7 +48,7 @@ func main() {
 	conf := &tdx.Config{
 		Hosts:    cfg.GetStrings("hosts"),
 		Number:   cfg.GetInt("number", 10),
-		Limit:    cfg.GetInt("limit", 20),
+		Limit:    cfg.GetInt("limit", 100),
 		Database: cfg.GetString("database"),
 	}
 
@@ -88,7 +88,7 @@ func main() {
 				start.OnClick(func(m *tray.Menu) { f(true) })
 
 				//每天下午16点进行数据更新
-				taskid, _ = task.AddFunc("0 0 16 * * *", func() { f(c.Workday.TodayIs()) })
+				taskid, _ = task.AddFunc("0 1 15 * * *", func() { f(c.Workday.TodayIs()) })
 
 				//更新数据
 				f(cfg.GetBool("runFirst", true))
