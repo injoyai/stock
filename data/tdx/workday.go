@@ -4,6 +4,7 @@ import (
 	"github.com/injoyai/base/maps"
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/database/xorms"
+	"github.com/injoyai/goutil/g"
 	"github.com/injoyai/goutil/times"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/logs"
@@ -44,7 +45,9 @@ func NewWorkday(hosts []string, filename string, op ...client.Option) (*workday,
 
 	// 每天早上9点更新数据
 	cron.New(cron.WithSeconds()).AddFunc("0 0 9 * * *", func() {
-		err := w.Update()
+		err := g.Retry(w.Update, 3, func(duration time.Duration) time.Duration {
+			return time.Minute * 5
+		})
 		logs.PrintErr(err)
 	})
 

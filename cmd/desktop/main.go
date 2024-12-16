@@ -94,7 +94,7 @@ func main() {
 				taskid, _ = task.AddFunc("0 1 15 * * *", func() { f(c.Workday.TodayIs()) })
 
 				//更新数据
-				f(cfg.GetBool("runFirst", true))
+				f(cfg.GetBool("runFirst", false))
 
 				<-s.Done()
 			}()
