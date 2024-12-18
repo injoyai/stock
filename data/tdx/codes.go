@@ -3,6 +3,7 @@ package tdx
 import (
 	"github.com/injoyai/goutil/database/sqlite"
 	"github.com/injoyai/goutil/database/xorms"
+	"github.com/injoyai/goutil/g"
 	"github.com/injoyai/ios/client"
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/data/tdx/model"
@@ -53,10 +54,14 @@ func NewCode(hosts []string, filename string, op ...client.Option) (*Code, error
 	}
 
 	// 每天早上8点更新数据
-	cron.New(cron.WithSeconds()).AddFunc("0 0 8 * * *", func() {
-		err := cc.Update()
+	task := cron.New(cron.WithSeconds())
+	task.AddFunc("0 0 9 * * *", func() {
+		err := g.Retry(cc.Update, 3, func(duration time.Duration) time.Duration {
+			return time.Minute * 5
+		})
 		logs.PrintErr(err)
 	})
+	task.Start()
 
 	return cc, cc.Update()
 }
