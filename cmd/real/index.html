@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票实时行情</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .stock-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stock-info {
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+
+        .stock-price {
+            font-size: 24px;
+            color: #d14;
+            margin: 10px 0;
+        }
+
+        .stock-chart {
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 15px;
+            height: 400px;
+        }
+
+        .change-up {
+            color: #d14;
+        }
+
+        .change-down {
+            color: #0a0;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="stock-container">
+        <div class="stock-info">
+            <h2>阿里巴巴 (BABA)</h2>
+            <div class="stock-price">￥88.88</div>
+            <div class="change-up">+2.88 (+3.35%)</div>
+            <div style="margin-top: 20px;">
+                <p>今日开盘：￥86.00</p>
+                <p>昨日收盘：￥86.00</p>
+                <p>当日最高：￥89.50</p>
+                <p>当日最低：￥85.80</p>
+                <p>成交量：3.2亿股</p>
+                <p>市值：2.3万亿</p>
+            </div>
+        </div>
+        <div class="stock-chart">
+            <div id="stockChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 生成固定的时间轴
+        function generateTimeAxis() {
+            const times = [];
+            let now = new Date();
+            
+            // 上午场
+            now.setHours(9, 30, 0, 0);
+            const morningEnd = new Date(now);
+            morningEnd.setHours(11, 30, 0, 0);
+
+            while (now <= morningEnd) {
+                times.push(now.toLocaleTimeString('zh-CN', { hour12: false }));
+                now.setMinutes(now.getMinutes() + 1);
+            }
+
+            // 下午场
+            now.setHours(13, 0, 0, 0);
+            const afternoonEnd = new Date(now);
+            afternoonEnd.setHours(15, 0, 0, 0);
+
+            while (now <= afternoonEnd) {
+                times.push(now.toLocaleTimeString('zh-CN', { hour12: false }));
+                now.setMinutes(now.getMinutes() + 1);
+            }
+
+            return times;
+        }
+
+        // 生成初始数据
+        function generateInitialData(length) {
+            const basePrice = 88.88;
+            const data = new Array(length).fill(null);
+            // 只填充到当前时间的数据
+            const now = new Date();
+            const marketOpen = new Date();
+            marketOpen.setHours(9, 30, 0, 0);
+            
+            const minutesSinceOpen = Math.floor((now - marketOpen) / (1000 * 60));
+            const dataPoints = Math.min(minutesSinceOpen, length);
+            
+            for (let i = 0; i < dataPoints; i++) {
+                data[i] = (basePrice + (Math.random() - 0.5) * 5).toFixed(2);
+            }
+            return data;
+        }
+
+        // 初始化图表
+        const chartDom = document.getElementById('stockChart');
+        const myChart = echarts.init(chartDom);
+
+        const times = generateTimeAxis();
+        const data = generateInitialData(times.length);
+
+        const option = {
+            title: {
+                text: '股票分时图',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'axis',
+                formatter: function (params) {
+                    if (params[0].value === null) {
+                        return `时间：${params[0].axisValue}<br/>价格：暂无数据`;
+                    }
+                    return `时间：${params[0].axisValue}<br/>价格：￥${params[0].value}`;
+                }
+            },
+            xAxis: {
+                type: 'category',
+                data: times,
+                axisLabel: {
+                    interval: 60,
+                    formatter: function(value) {
+                        return value.substring(0, 5);
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                scale: true,
+                axisLabel: {
+                    formatter: '￥{value}'
+                }
+            },
+            series: [{
+                data: data,
+                type: 'line',
+                smooth: true,
+                connectNulls: true,
+                lineStyle: {
+                    color: '#d14'
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {
+                            offset: 0,
+                            color: 'rgba(209, 17, 17, 0.2)'
+                        },
+                        {
+                            offset: 1,
+                            color: 'rgba(209, 17, 17, 0)'
+                        }
+                    ])
+                }
+            }],
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            }
+        };
+
+        myChart.setOption(option);
+
+        // 在 script 标签中添加初始化函数
+        async function initPage() {
+            try {
+                const initData = await window.initStockData();
+                document.querySelector('h2').textContent = `${initData.name} (${initData.code})`;
+                document.querySelector('.stock-price').textContent = `￥${initData.basePrice.toFixed(2)}`;
+                
+                // 计算初始涨跌幅
+                const change = initData.basePrice - initData.yesterdayClose;
+                const changePct = (change / initData.yesterdayClose * 100).toFixed(2);
+                const changeElement = document.querySelector('.change-up');
+                const isUp = change >= 0;
+                changeElement.className = isUp ? 'change-up' : 'change-down';
+                changeElement.textContent = `${isUp ? '+' : ''}${change.toFixed(2)} (${isUp ? '+' : ''}${changePct}%)`;
+
+                // 更新其他数据
+                const infoDiv = document.querySelector('.stock-info div:last-child');
+                infoDiv.innerHTML = `
+                    <p>今日开盘：￥${initData.open.toFixed(2)}</p>
+                    <p>昨日收盘：￥${initData.yesterdayClose.toFixed(2)}</p>
+                    <p>当日最高：￥${initData.high.toFixed(2)}</p>
+                    <p>当日最低：￥${initData.low.toFixed(2)}</p>
+                    <p>成交量：${(initData.volume/10000).toFixed(2)}万手</p>
+                    <p>成交额：￥${(initData.market/100000000).toFixed(2)}亿</p>
+                `;
+            } catch (err) {
+                console.error('初始化数据失败:', err);
+            }
+        }
+
+        // 修改 updateStockData 函数
+        async function updateStockData() {
+            try {
+                const stockData = await window.getStockData();
+                
+                // 更新价格显示
+                const priceElement = document.querySelector('.stock-price');
+                priceElement.textContent = `￥${stockData.price.toFixed(2)}`;
+
+                // 更新涨跌显示
+                const changeElement = document.querySelector('.change-up');
+                const isUp = stockData.change >= 0;
+                changeElement.className = isUp ? 'change-up' : 'change-down';
+                changeElement.textContent = `${isUp ? '+' : ''}${stockData.change.toFixed(2)} (${isUp ? '+' : ''}${stockData.changePct.toFixed(2)}%)`;
+
+                // 更新成交量
+                document.querySelector('p:nth-child(5)').textContent = 
+                    `成交量：${(stockData.volume/10000).toFixed(2)}万手`;
+
+                // 更新图表
+                const currentIndex = times.indexOf(stockData.time);
+                if (currentIndex >= 0) {
+                    data[currentIndex] = stockData.price;
+                    myChart.setOption({
+                        series: [{
+                            data: data
+                        }]
+                    });
+                }
+            } catch (err) {
+                console.error('更新数据失败:', err);
+            }
+        }
+
+        // 在页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initPage);
+
+        // 监听窗口大小变化，调整图表大小
+        window.addEventListener('resize', function() {
+            myChart.resize();
+        });
+
+        // 添加定时更新
+        setInterval(updateStockData, 3000);
+    </script>
+</body>
+</html> 

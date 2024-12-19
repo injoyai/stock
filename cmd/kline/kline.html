@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>K线图</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+        }
+        .chart-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin-right: 10px;
+        }
+        .quote-container {
+            width: 200px;
+            background: #fff;
+            padding: 15px;
+            border-left: 1px solid #eee;
+            font-size: 14px;
+        }
+        .quote-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .quote-table tr {
+            height: 32px;
+        }
+        .quote-table td {
+            padding: 8px 4px;
+            border-bottom: 1px solid #f0f0f0;
+            line-height: 1.2;
+        }
+        .quote-table .label {
+            color: #666;
+        }
+        .quote-table .value {
+            text-align: right;
+            font-weight: 500;
+        }
+        .quote-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f5f5f5;
+        }
+        .quote-section:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+        .price-main {
+            font-size: 24px;
+            font-weight: bold;
+            line-height: 1.5;
+            text-align: center;
+        }
+        .price-change {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .up {
+            color: #ff3333;
+        }
+        .down {
+            color: #00aa00;
+        }
+        #klineChart {
+            flex: 1;
+            min-height: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chart-container">
+            <div class="stock-info">
+                <span>当前: </span><span id="currentStock">sz000001</span>
+                <span style="margin-left: 20px; color: #666;">(使用↑↓键切换)</span>
+            </div>
+            <div id="klineChart"></div>
+        </div>
+        <div class="quote-container">
+            <div class="quote-section">
+                <div id="stockName" style="font-size: 16px; text-align: center; margin-bottom: 10px;">-</div>
+                <div id="price" class="price-main">-</div>
+                <div class="price-change">
+                    <span id="change">-</span>
+                </div>
+            </div>
+            <div class="quote-section">
+                <table class="quote-table">
+                    <tr>
+                        <td class="label">今开</td>
+                        <td class="value" id="open">-</td>
+                        <td class="label">最高</td>
+                        <td class="value" id="high">-</td>
+                    </tr>
+                    <tr>
+                        <td class="label">昨收</td>
+                        <td class="value" id="preClose">-</td>
+                        <td class="label">最低</td>
+                        <td class="value" id="low">-</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="quote-section">
+                <table class="quote-table">
+                    <tr>
+                        <td class="label">成交量</td>
+                        <td class="value" id="volume">-</td>
+                    </tr>
+                    <tr>
+                        <td class="label">成交额</td>
+                        <td class="value" id="amount">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart = echarts.init(document.getElementById('klineChart'));
+        const stockList = [
+            'sz000001', 'sz000002', 'sz000003', 'sz000004', 'sz000005',
+            'sh600000', 'sh600001', 'sh600002', 'sh600003', 'sh600004'
+        ];
+        let currentStock = 'sz000001';
+        let quoteTimer = null;
+
+        // 更新盘口信息
+        async function updateQuote() {
+            try {
+                const quote = await getQuote(currentStock);
+                if (!quote || quote.error) return;
+
+                const price = quote.Price.Float64();
+                const preClose = quote.PreClose.Float64();
+                const change = ((price - preClose) / preClose * 100).toFixed(2);
+                const changeClass = price >= preClose ? 'up' : 'down';
+
+                document.getElementById('stockName').textContent = quote.Name;
+                document.getElementById('price').textContent = price.toFixed(2);
+                document.getElementById('price').className = 'value ' + changeClass;
+                document.getElementById('change').textContent = change + '%';
+                document.getElementById('change').className = 'value ' + changeClass;
+                document.getElementById('volume').textContent = quote.Volume.toLocaleString();
+                document.getElementById('amount').textContent = (quote.Amount / 10000).toFixed(2) + '万';
+                document.getElementById('open').textContent = quote.Open.Float64().toFixed(2);
+                document.getElementById('preClose').textContent = preClose.toFixed(2);
+                document.getElementById('high').textContent = quote.High.Float64().toFixed(2);
+                document.getElementById('low').textContent = quote.Low.Float64().toFixed(2);
+            } catch (err) {
+                console.error('获取报价错误:', err);
+            }
+        }
+
+        function startQuoteUpdate() {
+            updateQuote();
+            if (quoteTimer) clearInterval(quoteTimer);
+            quoteTimer = setInterval(updateQuote, 3000);
+        }
+
+        function getCurrentIndex() {
+            return stockList.indexOf(currentStock);
+        }
+
+        function switchStock(direction) {
+            let currentIndex = getCurrentIndex();
+            if (currentIndex === -1) return;
+
+            if (direction === 'up') {
+                currentIndex = (currentIndex - 1 + stockList.length) % stockList.length;
+            } else {
+                currentIndex = (currentIndex + 1) % stockList.length;
+            }
+
+            currentStock = stockList[currentIndex];
+            document.getElementById('currentStock').textContent = currentStock;
+            loadData();
+            startQuoteUpdate();
+        }
+
+        async function loadData() {
+            try {
+                const data = await getKlineDay(currentStock, 0, 800);
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    return;
+                }
+
+                const formattedData = data.map(item => {
+                    const date = new Date(item[0] * 1000);
+                    return [
+                        date.toLocaleDateString(),
+                        item[1],
+                        item[2],
+                        item[3],
+                        item[4],
+                        item[5]
+                    ];
+                });
+
+                const option = {
+                    title: {
+                        text: `${currentStock} K线图`,
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'cross'
+                        },
+                        formatter: function (params) {
+                            const kline = params[0].data;
+                            const volume = params[1].data;
+                            return [
+                                '日期: ' + kline[0],
+                                '开盘: ' + kline[1].toFixed(2),
+                                '收盘: ' + kline[2].toFixed(2),
+                                '最低: ' + kline[3].toFixed(2),
+                                '最高: ' + kline[4].toFixed(2),
+                                '成交量: ' + volume
+                            ].join('<br/>');
+                        }
+                    },
+                    axisPointer: {
+                        link: {xAxisIndex: 'all'}
+                    },
+                    grid: [{
+                        left: '10%',
+                        right: '10%',
+                        height: '60%'
+                    }, {
+                        left: '10%',
+                        right: '10%',
+                        top: '75%',
+                        height: '15%'
+                    }],
+                    xAxis: [{
+                        type: 'category',
+                        data: formattedData.map(item => item[0]),
+                        scale: true,
+                        boundaryGap: false,
+                        axisLine: {onZero: false},
+                        splitLine: {show: false},
+                        min: 'dataMin',
+                        max: 'dataMax'
+                    }, {
+                        type: 'category',
+                        gridIndex: 1,
+                        data: formattedData.map(item => item[0]),
+                        scale: true,
+                        boundaryGap: false,
+                        axisLine: {onZero: false},
+                        axisTick: {show: false},
+                        splitLine: {show: false},
+                        axisLabel: {show: false},
+                        min: 'dataMin',
+                        max: 'dataMax'
+                    }],
+                    yAxis: [{
+                        scale: true,
+                        splitArea: {show: true}
+                    }, {
+                        scale: true,
+                        gridIndex: 1,
+                        splitNumber: 2,
+                        axisLabel: {show: false},
+                        axisLine: {show: false},
+                        axisTick: {show: false},
+                        splitLine: {show: false}
+                    }],
+                    dataZoom: [{
+                        type: 'inside',
+                        xAxisIndex: [0, 1],
+                        start: 50,
+                        end: 100
+                    }, {
+                        show: true,
+                        xAxisIndex: [0, 1],
+                        type: 'slider',
+                        bottom: '0',
+                        start: 50,
+                        end: 100
+                    }],
+                    series: [{
+                        name: 'K线',
+                        type: 'candlestick',
+                        data: formattedData.map(item => item.slice(1, 5)),
+                        itemStyle: {
+                            color: '#ef232a',
+                            color0: '#14b143',
+                            borderColor: '#ef232a',
+                            borderColor0: '#14b143'
+                        }
+                    }, {
+                        name: '成交量',
+                        type: 'bar',
+                        xAxisIndex: 1,
+                        yAxisIndex: 1,
+                        data: formattedData.map(item => item[5]),
+                        itemStyle: {
+                            color: function(params) {
+                                const item = formattedData[params.dataIndex];
+                                return item[1] <= item[2] ? '#14b143' : '#ef232a';
+                            }
+                        }
+                    }]
+                };
+
+                myChart.setOption(option);
+            } catch (err) {
+                console.error('加载数据错误:', err);
+            }
+        }
+
+        // 监听键盘事件
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'ArrowUp':
+                    event.preventDefault();
+                    switchStock('up');
+                    break;
+                case 'ArrowDown':
+                    event.preventDefault();
+                    switchStock('down');
+                    break;
+            }
+        });
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', function() {
+            myChart.resize();
+        });
+
+        // 页面加载时启动
+        loadData();
+        startQuoteUpdate();
+
+        // 页面关闭时清理定时器
+        window.addEventListener('beforeunload', function() {
+            if (quoteTimer) clearInterval(quoteTimer);
+        });
+    </script>
+</body>
+</html> 

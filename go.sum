@@ -1110,8 +1110,8 @@ github.com/injoyai/minidb v0.0.15 h1:uDQVRB9mxAdnkL/zryWLU3Ru+GHsGeiQfEsP3+xuj2Y
 github.com/injoyai/minidb v0.0.15/go.mod h1:U24NFz5BmNtq6+G96FVKKrAx18U7S/sTxwpF6BSiBA8=
 github.com/injoyai/notice v0.0.1 h1:MyrhpBVaGOwIhJzBaRM+ryHkYc14Cr6RYyp3PA7glgo=
 github.com/injoyai/notice v0.0.1/go.mod h1:OH40A20LdmHq9hqNM4q9aiHnL8/yknziqayn5aUVcVU=
-github.com/injoyai/tdx v0.0.2 h1:aPV3WsFEEEXWWNAiJvj/gSsjPjdI4qIToA7UsiEtF2E=
-github.com/injoyai/tdx v0.0.2/go.mod h1:YaBaRF5b8pgMG97M6cX5jDvEAq0QgHPaiX2AXqvctCE=
+github.com/injoyai/tdx v0.0.4 h1:ig2+MrB75kKbzWO8wOMp+w/AyMnjmajXweNLIU2ZsDI=
+github.com/injoyai/tdx v0.0.4/go.mod h1:YaBaRF5b8pgMG97M6cX5jDvEAq0QgHPaiX2AXqvctCE=
 github.com/ishidawataru/sctp v0.0.0-20191218070446-00ab2ac2db07/go.mod h1:co9pwDoBCm1kGxawmb4sPq0cSIOOWNPT4KnHotMP1Zg=
 github.com/j-keck/arping v0.0.0-20160618110441-2cf9dc699c56/go.mod h1:ymszkNOg6tORTn+6F6j+Jc8TOr5osrynvN6ivFWZ2GA=
 github.com/jackc/chunkreader v1.0.0/go.mod h1:RT6O25fNZIuasFJRyZ4R/Y2BbhasbmZXF9QQ7T3kePo=

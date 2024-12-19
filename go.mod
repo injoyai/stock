@@ -12,7 +12,7 @@ require (
 	github.com/injoyai/logs v1.0.9
 	github.com/injoyai/lorca v0.0.0-20230816093842-66a8b4247238
 	github.com/injoyai/notice v0.0.1
-	github.com/injoyai/tdx v0.0.2
+	github.com/injoyai/tdx v0.0.4
 	github.com/robfig/cron/v3 v3.0.1
 	xorm.io/xorm v1.3.2
 )
