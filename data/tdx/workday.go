@@ -44,12 +44,14 @@ func NewWorkday(hosts []string, filename string, op ...client.Option) (*workday,
 	}
 
 	// 每天早上9点更新数据
-	cron.New(cron.WithSeconds()).AddFunc("0 0 9 * * *", func() {
+	task := cron.New(cron.WithSeconds())
+	task.AddFunc("0 0 9 * * *", func() {
 		err := g.Retry(w.Update, 3, func(duration time.Duration) time.Duration {
 			return time.Minute * 5
 		})
 		logs.PrintErr(err)
 	})
+	task.Start()
 
 	return w, w.Update()
 }
