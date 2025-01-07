@@ -3,7 +3,7 @@
 1. 从通达信获取数据[`https://github.com/injoyai/tdx`](https://github.com/injoyai/tdx)
 2. 存入到sqlite3
 3. 进行数据分析,回测等,通过运行代码的方式
-4. 桌面端数据拉取工具已经完成,个人使用中,位置在[`cmd/desktop/`](https://github.com/injoyai/stock/blob/main/cmd/desktop/)
+4. 一期完成,下载[`桌面端数据拉取工具`]("https://github.com/injoyai/stock/releases/v0.1.0/download/desktop.exe")
 
 ### 科普
 
@@ -29,7 +29,13 @@
 
 ### 详情
 
-1. 结构
+* 一期完成,下载: [`桌面端数据拉取工具`]("https://github.com/injoyai/stock/releases/v0.1.0/download/desktop.exe")
+* 个人使用中,代码位置在[`cmd/desktop/`](https://github.com/injoyai/stock/blob/main/cmd/desktop/)
+* 每天上午9点自动更新是否是工作日的数据
+* 每天下午3点1分自动更新K线数据,需要分时成交数据的,拉取自己改代码,分时成交数据需要大于4T的磁盘
+* 更新完数据后会保存一份csv数据和一份zip数据,个人通过百度网盘把zip同步到云端
+
+* 结构
     - 代码(例sz000001)
         - KlineMinute(`1分K线`)
         - Kline5Minute`(5分K线)`
@@ -45,7 +51,11 @@
 
    ![](docs/tables.png)
 
-2. 小工具-实时分时
+   ![](docs/desktop_icon.png)
+
+   ![](docs/desktop_info.png)
+
+### 小工具-实时分时
 
    位置: [`cmd/chart/chart.go`](https://github.com/injoyai/stock/blob/main/cmd/chart/chart.go)
    ![](docs/chart.png)
