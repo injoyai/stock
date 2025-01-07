@@ -1,8 +1,9 @@
 ### 说明
 
-1. 各个渠道的数据获取
-2. 存入到mysql(基本信息)和influxdb(历史数据)
-3. 进行数据分析,回测等
+1. 从通达信获取数据[`https://github.com/injoyai/tdx`](https://github.com/injoyai/tdx)
+2. 存入到sqlite3
+3. 进行数据分析,回测等,通过运行代码的方式
+4. 桌面端数据拉取已经完成,个人使用中,位置在[`cmd/desktop/](https://github.com/injoyai/stock/blob/main/cmd/desktop/)
 
 ### 科普
 
