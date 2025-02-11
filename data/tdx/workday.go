@@ -88,7 +88,6 @@ func (this *workday) Update() error {
 			return err
 		}
 
-		logs.Debug(this.db.Engine == nil)
 		this.db.SessionFunc(func(session *xorm.Session) error {
 			for _, v := range resp.List {
 				if unix := v.Time.Unix(); unix > lastWorkday.Unix {

@@ -241,7 +241,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 	list := []*model.Kline(nil)
 	size := uint16(800)
 	size = 8
-	for start := uint16(0); ; start += size {
+	for start := uint16(0); ; {
 		resp, err := get(this.code, start, size)
 		if err != nil {
 			logs.Err(err)
@@ -262,7 +262,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 		if resp.Count < size || done {
 			break
 		}
-
+		start += size
 		size *= 10
 		if size > 800 {
 			size = 800

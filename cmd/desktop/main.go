@@ -128,7 +128,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 				ch.Done()
 				s.SetHint(plan.Add().String())
 			}()
-			c.WithOpenDB(code, func(db *tdx.DB) error {
+			err := c.WithOpenDB(code, func(db *tdx.DB) error {
 				for _, v := range db.AllKlineHandler() {
 					err := g.Retry(func() error {
 						kline, err := v.Handler(c.Pool)
@@ -142,11 +142,14 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 				}
 				return nil
 			})
+			logs.PrintErr(err)
 		}(codes[i])
 
 	}
 
 	ch.Wait()
+
+	logs.Info("数据更新结束...")
 
 	//进行压缩操作,250ms
 	s.SetHint(plan.CompressStart().String())
