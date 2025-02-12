@@ -15,10 +15,16 @@ import (
 var klineHtml string
 
 func main() {
+	logs.Debug("启动K线图")
+	defer func() {
+		if err := recover(); err != nil {
+			logs.Err("K线图异常:", err)
+		}
+	}()
 
 	c := NewClient()
 
-	lorca.Run(&lorca.Config{
+	err := lorca.Run(&lorca.Config{
 		Html:   klineHtml,
 		Width:  640, //  1024,
 		Height: 480, // 768,
@@ -75,6 +81,8 @@ func main() {
 
 		return nil
 	})
+
+	logs.Err(err)
 
 }
 

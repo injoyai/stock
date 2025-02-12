@@ -71,15 +71,26 @@
             text-align: center;
             margin-bottom: 15px;
         }
-        .up {
-            color: #ff3333;
-        }
-        .down {
-            color: #00aa00;
-        }
         #klineChart {
             flex: 1;
             min-height: 0;
+        }
+        .quote-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .quote-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .quote-item span:first-child {
+            color: #666;
+        }
+        .quote-item span:last-child {
+            font-weight: 500;
         }
     </style>
 </head>
@@ -95,38 +106,20 @@
         <div class="quote-container">
             <div class="quote-section">
                 <div id="stockName" style="font-size: 16px; text-align: center; margin-bottom: 10px;">-</div>
-                <div id="price" class="price-main">-</div>
-                <div class="price-change">
-                    <span id="change">-</span>
+                <div id="quoteData">
+                    <div class="price-info">
+                        <div class="price-main">-</div>
+                        <div class="price-change">-</div>
+                    </div>
+                    <div class="quote-grid">
+                        <div class="quote-item"><span>今开</span><span>-</span></div>
+                        <div class="quote-item"><span>最高</span><span>-</span></div>
+                        <div class="quote-item"><span>昨收</span><span>-</span></div>
+                        <div class="quote-item"><span>最低</span><span>-</span></div>
+                        <div class="quote-item"><span>成交量</span><span>-</span></div>
+                        <div class="quote-item"><span>成交额</span><span>-</span></div>
+                    </div>
                 </div>
-            </div>
-            <div class="quote-section">
-                <table class="quote-table">
-                    <tr>
-                        <td class="label">今开</td>
-                        <td class="value" id="open">-</td>
-                        <td class="label">最高</td>
-                        <td class="value" id="high">-</td>
-                    </tr>
-                    <tr>
-                        <td class="label">昨收</td>
-                        <td class="value" id="preClose">-</td>
-                        <td class="label">最低</td>
-                        <td class="value" id="low">-</td>
-                    </tr>
-                </table>
-            </div>
-            <div class="quote-section">
-                <table class="quote-table">
-                    <tr>
-                        <td class="label">成交量</td>
-                        <td class="value" id="volume">-</td>
-                    </tr>
-                    <tr>
-                        <td class="label">成交额</td>
-                        <td class="value" id="amount">-</td>
-                    </tr>
-                </table>
             </div>
         </div>
     </div>
@@ -138,43 +131,52 @@
             'sh600000', 'sh600001', 'sh600002', 'sh600003', 'sh600004'
         ];
         let currentStock = 'sz000001';
-        let quoteTimer = null;
+        let quoteData = null;
+        let updatePending = false;
 
-        // 更新盘口信息
+        function updateQuoteDisplay() {
+            if (!quoteData || updatePending) return;
+            updatePending = true;
+
+            requestAnimationFrame(() => {
+                try {
+                    const container = document.getElementById('quoteData');
+                    const price = quoteData.Price.Float64();
+                    const preClose = quoteData.PreClose.Float64();
+                    const change = ((price - preClose) / preClose * 100).toFixed(2);
+                    const changeClass = price >= preClose ? 'up' : 'down';
+
+                    container.innerHTML = `
+                        <div class="price-info">
+                            <div class="price-main ${changeClass}">${price.toFixed(2)}</div>
+                            <div class="price-change ${changeClass}">${(price - preClose).toFixed(2)} (${change}%)</div>
+                        </div>
+                        <div class="quote-grid">
+                            <div class="quote-item"><span>今开</span><span>${quoteData.Open.Float64().toFixed(2)}</span></div>
+                            <div class="quote-item"><span>最高</span><span>${quoteData.High.Float64().toFixed(2)}</span></div>
+                            <div class="quote-item"><span>昨收</span><span>${preClose.toFixed(2)}</span></div>
+                            <div class="quote-item"><span>最低</span><span>${quoteData.Low.Float64().toFixed(2)}</span></div>
+                            <div class="quote-item"><span>成交量</span><span>${formatNumber(quoteData.Volume)}</span></div>
+                            <div class="quote-item"><span>成交额</span><span>${formatAmount(quoteData.Amount)}</span></div>
+                        </div>
+                    `;
+                    document.getElementById('stockName').textContent = quoteData.Name;
+                } catch (err) {
+                    console.error('更新显示错误:', err);
+                }
+                updatePending = false;
+            });
+        }
+
         async function updateQuote() {
             try {
                 const quote = await getQuote(currentStock);
                 if (!quote || quote.error) return;
-
-                const price = quote.Price.Float64();
-                const preClose = quote.PreClose.Float64();
-                const change = ((price - preClose) / preClose * 100).toFixed(2);
-                const changeClass = price >= preClose ? 'up' : 'down';
-
-                document.getElementById('stockName').textContent = quote.Name;
-                document.getElementById('price').textContent = price.toFixed(2);
-                document.getElementById('price').className = 'value ' + changeClass;
-                document.getElementById('change').textContent = change + '%';
-                document.getElementById('change').className = 'value ' + changeClass;
-                document.getElementById('volume').textContent = quote.Volume.toLocaleString();
-                document.getElementById('amount').textContent = (quote.Amount / 10000).toFixed(2) + '万';
-                document.getElementById('open').textContent = quote.Open.Float64().toFixed(2);
-                document.getElementById('preClose').textContent = preClose.toFixed(2);
-                document.getElementById('high').textContent = quote.High.Float64().toFixed(2);
-                document.getElementById('low').textContent = quote.Low.Float64().toFixed(2);
+                quoteData = quote;
+                updateQuoteDisplay();
             } catch (err) {
                 console.error('获取报价错误:', err);
             }
-        }
-
-        function startQuoteUpdate() {
-            updateQuote();
-            if (quoteTimer) clearInterval(quoteTimer);
-            quoteTimer = setInterval(updateQuote, 3000);
-        }
-
-        function getCurrentIndex() {
-            return stockList.indexOf(currentStock);
         }
 
         function switchStock(direction) {
@@ -190,7 +192,11 @@
             currentStock = stockList[currentIndex];
             document.getElementById('currentStock').textContent = currentStock;
             loadData();
-            //startQuoteUpdate();
+            updateQuote();
+        }
+
+        function getCurrentIndex() {
+            return stockList.indexOf(currentStock);
         }
 
         async function loadData() {
@@ -218,26 +224,57 @@
                         text: `${currentStock} K线图`,
                         left: 'center'
                     },
+                    animation: false,
+                    progressive: 500,
+                    progressiveThreshold: 1000,
                     tooltip: {
                         trigger: 'axis',
+                        triggerOn: 'none',
+                        alwaysShowContent: false,
                         axisPointer: {
-                            type: 'cross'
+                            animation: false,
+                            type: 'cross',
+                            snap: true
                         },
                         formatter: function (params) {
-                            const kline = params[0].data;
-                            const volume = params[1].data;
+                            // 确保参数存在
+                            if (!params || params.length === 0) return '';
+                            
+                            // 找到K线数据和成交量数据
+                            const klineData = params.find(item => item.seriesName === 'K线');
+                            const volumeData = params.find(item => item.seriesName === '成交量');
+                            
+                            if (!klineData) return '';
+                            
+                            const date = klineData.axisValue;
+                            const data = klineData.data;
+                            const volume = volumeData ? volumeData.data : '-';
+                            
+                            // 格式化成交量
+                            const formatVolume = (vol) => {
+                                if (vol >= 100000000) {
+                                    return (vol / 100000000).toFixed(2) + '亿';
+                                } else if (vol >= 10000) {
+                                    return (vol / 10000).toFixed(2) + '万';
+                                }
+                                return vol.toLocaleString();
+                            };
+
                             return [
-                                '日期: ' + kline[0],
-                                '开盘: ' + kline[1].toFixed(2),
-                                '收盘: ' + kline[2].toFixed(2),
-                                '最低: ' + kline[3].toFixed(2),
-                                '最高: ' + kline[4].toFixed(2),
-                                '成交量: ' + volume
+                                '日期: ' + date,
+                                '开盘: ' + data[0].toFixed(2),
+                                '收盘: ' + data[1].toFixed(2),
+                                '最低: ' + data[2].toFixed(2),
+                                '最高: ' + data[3].toFixed(2),
+                                '成交量: ' + formatVolume(volume)
                             ].join('<br/>');
                         }
                     },
                     axisPointer: {
-                        link: {xAxisIndex: 'all'}
+                        link: [{xAxisIndex: 'all'}],
+                        label: {
+                            backgroundColor: '#777'
+                        }
                     },
                     grid: [{
                         left: '10%',
@@ -256,6 +293,11 @@
                         boundaryGap: false,
                         axisLine: {onZero: false},
                         splitLine: {show: false},
+                        axisPointer: {
+                            show: true,
+                            snap: true,
+                            label: {show: false}
+                        },
                         min: 'dataMin',
                         max: 'dataMax'
                     }, {
@@ -286,6 +328,7 @@
                     dataZoom: [{
                         type: 'inside',
                         xAxisIndex: [0, 1],
+                        throttle: 100,
                         start: 50,
                         end: 100
                     }, {
@@ -293,6 +336,7 @@
                         xAxisIndex: [0, 1],
                         type: 'slider',
                         bottom: '0',
+                        throttle: 100,
                         start: 50,
                         end: 100
                     }],
@@ -321,6 +365,30 @@
                     }]
                 };
 
+                // 添加鼠标移动事件处理
+                let lastDataIndex = -1;
+                myChart.getZr().on('mousemove', function(params) {
+                    const pointInGrid = myChart.convertFromPixel({xAxisIndex: 0}, [params.offsetX, params.offsetY]);
+                    if (pointInGrid) {
+                        const dataIndex = Math.round(pointInGrid[0]);
+                        if (dataIndex >= 0 && dataIndex < formattedData.length && dataIndex !== lastDataIndex) {
+                            lastDataIndex = dataIndex;
+                            myChart.dispatchAction({
+                                type: 'showTip',
+                                seriesIndex: 0,
+                                dataIndex: dataIndex
+                            });
+                        }
+                    }
+                });
+
+                myChart.getZr().on('globalout', function() {
+                    lastDataIndex = -1;
+                    myChart.dispatchAction({
+                        type: 'hideTip'
+                    });
+                });
+
                 myChart.setOption(option);
             } catch (err) {
                 console.error('加载数据错误:', err);
@@ -348,9 +416,9 @@
 
         // 页面加载时启动
         loadData();
-        //startQuoteUpdate();
+        updateQuote();
 
-        // 页面关闭时清理定时器
+        // 页面关闭时清理
         window.addEventListener('beforeunload', function() {
             if (quoteTimer) clearInterval(quoteTimer);
         });
