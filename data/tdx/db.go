@@ -258,6 +258,9 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 				done = true
 			}
 		}
+		if len(list) > 0 && len(ls) > 0 {
+			list[0].Last = ls[len(ls)-1].Close
+		}
 		list = append(ls, list...)
 		if resp.Count < size || done {
 			break
