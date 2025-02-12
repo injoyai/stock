@@ -14,18 +14,6 @@ import (
 	"xorm.io/xorm"
 )
 
-const (
-	PrefixSHA   = "6"   //沪市A股
-	PrefixSH900 = "900" //沪市B股
-	PrefixSH58  = "58"  //沪市权证
-
-	PrefixSZChinext = "30"  //创业板
-	PrefixSZ000     = "000" //深市主板
-	PrefixSZ002     = "002" //深市中小板
-	PrefixSZWarrant = "03"  //深市权证
-	PrefixSZ200     = "200" //深市B股
-)
-
 func NewCode(hosts []string, filename string, op ...client.Option) (*Code, error) {
 
 	c, err := tdx.DialWith(tdx.NewHostDial(hosts), func(c *client.Client) {
@@ -104,15 +92,11 @@ func (this *Code) GetStocks() []string {
 func (this *Code) IsStock(exchange protocol.Exchange, code string) bool {
 	switch {
 	case exchange == protocol.ExchangeSH &&
-		(code[0:1] == PrefixSHA ||
-			code[0:3] == PrefixSH900):
+		(code[0:1] == "6"):
 		return true
 
 	case exchange == protocol.ExchangeSZ &&
-		(code[0:1] == PrefixSZChinext ||
-			code[0:3] == PrefixSZ000 ||
-			code[0:3] == PrefixSZ002 ||
-			code[0:3] == PrefixSZ200):
+		(code[0:1] == "0" || code[0:2] == "30"):
 		return true
 	}
 	return false
