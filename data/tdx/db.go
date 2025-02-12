@@ -59,6 +59,7 @@ type DB struct {
 func (this *DB) AllKlineHandler() []*Handler {
 	return []*Handler{
 		{"1分K线", this.KlineMinute},
+		{"5分K线", this.Kline5Minute},
 		{"15分K线", this.Kline15Minute},
 		{"30分K线", this.Kline30Minute},
 		{"时K线", this.KlineHour},
