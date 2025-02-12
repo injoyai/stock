@@ -19,7 +19,7 @@ const (
 	PrefixSH900 = "900" //沪市B股
 	PrefixSH58  = "58"  //沪市权证
 
-	PrefixSZChinext = "3"   //创业板
+	PrefixSZChinext = "30"  //创业板
 	PrefixSZ000     = "000" //深市主板
 	PrefixSZ002     = "002" //深市中小板
 	PrefixSZWarrant = "03"  //深市权证
