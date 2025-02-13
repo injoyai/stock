@@ -6,53 +6,23 @@ import (
 	"time"
 )
 
-// IsStock 是否是股票,不一定完全,通过百度查询
-func IsStock(exchange protocol.Exchange, code string) bool {
-	switch {
-	case exchange == protocol.ExchangeSH &&
-		(code[0:1] == PrefixSHA ||
-			code[0:3] == PrefixSH900):
-		return true
-
-	case exchange == protocol.ExchangeSZ &&
-		(code[0:1] == PrefixSZChinext ||
-			code[0:3] == PrefixSZ000 ||
-			code[0:3] == PrefixSZ002 ||
-			code[0:3] == PrefixSZ200):
-		return true
-	}
-	return false
-}
-
-const (
-	PrefixSHA   = "6"   //沪市A股
-	PrefixSH900 = "900" //沪市B股
-	PrefixSH58  = "58"  //沪市权证
-
-	PrefixSZChinext = "3"   //创业板
-	PrefixSZ000     = "000" //深市主板
-	PrefixSZ002     = "002" //深市中小板
-	PrefixSZWarrant = "03"  //深市权证
-	PrefixSZ200     = "200" //深市B股
-)
-
 func NewCode(exchange protocol.Exchange, v *protocol.Code) *Code {
 	return &Code{
 		Name:     v.Name,
 		Code:     v.Code,
 		Exchange: exchange.String(),
-		Stock:    IsStock(exchange, v.Code),
+		//Stock:    IsStock(exchange, v.Code),
 	}
 }
 
 type Code struct {
-	ID       int64  `json:"id"`                      //主键
-	Name     string `json:"name"`                    //名称
-	Code     string `json:"code" xorm:"index"`       //代码
-	Exchange string `json:"exchange" xorm:"index"`   //交易所
-	Stock    bool   `json:"stock" xorm:"index"`      //是否是股票
-	EditDate int64  `json:"editDate" xorm:"updated"` //修改时间
-	InDate   int64  `json:"inDate" xorm:"created"`   //创建时间
+	ID       int64  `json:"id"`                    //主键
+	Name     string `json:"name"`                  //名称
+	Code     string `json:"code" xorm:"index"`     //代码
+	Exchange string `json:"exchange" xorm:"index"` //交易所
+	//Stock    bool   `json:"stock" xorm:"index"`      //是否是股票,无效
+	EditDate int64 `json:"editDate" xorm:"updated"` //修改时间
+	InDate   int64 `json:"inDate" xorm:"created"`   //创建时间
 }
 
 /**/
