@@ -48,6 +48,11 @@ func init() {
 
 func main() {
 
+	if !oss.Exists("./config") && time.Date(2025, 2, 20, 0, 0, 0, 0, time.Local).Before(time.Now()) {
+		notice.DefaultWindows.Publish(&notice.Message{Title: "Stock Desktop", Content: "试用过期"})
+		return
+	}
+
 	conf := &tdx.Config{
 		Hosts:    cfg.GetStrings("hosts"),
 		Number:   cfg.GetInt("number", 10),
