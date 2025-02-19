@@ -61,7 +61,9 @@ func main() {
 			s.AddMenu().SetName("版本: v0.2.11").Disable()
 			last := s.AddMenu().SetName("上次:").Disable()
 			next := s.AddMenu().SetName("下次:").Disable()
+			_export := s.AddMenu().SetName("导出")
 			start := s.AddMenu().SetName("执行")
+
 			go func() {
 				task := cron.New(cron.WithSeconds())
 				task.Start()
@@ -70,6 +72,12 @@ func main() {
 				//连接客户端
 				c, err := tdx.Dial(conf)
 				logs.PanicErr(err)
+
+				_export.OnClick(func(m *tray.Menu) {
+					codes := cfg.GetStrings("codes", c.Code.GetStocks())
+					err := export(c, codes)
+					notice.DefaultWindows.Publish(&notice.Message{Title: "Stock Desktop", Content: "数据导出完成,结果: " + conv.String(err)})
+				})
 
 				f := func(up bool) {
 					defer func() {
@@ -160,6 +168,33 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 	s.SetHint(plan.CompressEnd().String())
 
 	return nil
+}
+
+func export(c *tdx.Client, codes []string, retries ...int) error {
+	retry := conv.DefaultInt(3, retries...)
+	for i := range codes {
+		code := codes[i]
+		c.WithOpenDB(code, func(db *tdx.DB) error {
+			for _, v := range db.AllDBKline() {
+				err := g.Retry(func() error {
+					kline, err := v.Handler(c.Pool)
+					if err != nil {
+						return err
+					}
+					toCsv(c, filepath.Join(c.Cfg.Database, "csv", code, v.Name+".csv"), kline)
+					return nil
+				}, retry)
+				logs.PrintErr(err)
+			}
+			return nil
+		})
+	}
+	return nil
+}
+
+// 导入
+func _import() {
+
 }
 
 func toCsv(c *tdx.Client, filename string, kline model.Klines) error {

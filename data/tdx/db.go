@@ -71,6 +71,21 @@ func (this *DB) AllKlineHandler() []*Handler {
 	}
 }
 
+func (this *DB) AllDBKline() []*Handler {
+	return []*Handler{
+		{"1分K线", this.newAllKline("KlineMinute")},
+		{"5分K线", this.newAllKline("Kline5Minute")},
+		{"15分K线", this.newAllKline("Kline15Minute")},
+		{"30分K线", this.newAllKline("Kline30Minute")},
+		{"时K线", this.newAllKline("KlineHour")},
+		{"日K线", this.newAllKline("KlineDay")},
+		{"周K线", this.newAllKline("KlineWeek")},
+		{"月K线", this.newAllKline("KlineMonth")},
+		{"季K线", this.newAllKline("KlineQuarter")},
+		{"年K线", this.newAllKline("KlineYear")},
+	}
+}
+
 func (this *DB) Close() error {
 	return this.db.Close()
 }
@@ -226,7 +241,7 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 
 	//2. 查询数据库的数据,主要耗时点
 	cache := []*model.Kline(nil)
-	err := this.db.Table(table).Find(&cache)
+	err := this.db.Table(table).Asc("Node").Find(&cache)
 	if err != nil {
 		logs.Err(err)
 		return nil, err
@@ -302,6 +317,14 @@ func (this *DB) kline(suffix string, get func(code string, start, count uint16) 
 	logs.PrintErr(err)
 
 	return cache, nil
+}
+
+func (this *DB) newAllKline(table string) func(pool *Pool) ([]*model.Kline, error) {
+	return func(pool *Pool) ([]*model.Kline, error) {
+		data := []*model.Kline(nil)
+		err := this.db.Table(table).Asc("Node").Find(&data)
+		return data, err
+	}
 }
 
 func (this *DB) getInfo() (*model.Update, error) {
