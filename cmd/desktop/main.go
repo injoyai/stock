@@ -9,12 +9,11 @@ import (
 	"github.com/injoyai/goutil/oss"
 	"github.com/injoyai/goutil/oss/tray"
 	"github.com/injoyai/goutil/oss/win"
+	"github.com/injoyai/goutil/other/excel"
 	"github.com/injoyai/logs"
 	"github.com/injoyai/stock/cmd/internal/chart"
 	"github.com/injoyai/stock/data/tdx"
 	"github.com/injoyai/stock/data/tdx/model"
-	"github.com/injoyai/stock/util/csv"
-	"github.com/injoyai/stock/util/zip"
 	"github.com/robfig/cron/v3"
 	"path/filepath"
 	"strings"
@@ -140,7 +139,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 						if err != nil {
 							return err
 						}
-						toCsv(c, filepath.Join(c.Cfg.Database, "csv", code, v.Name+".csv"), kline)
+						toCsv(c, filepath.Join(c.Cfg.Database, "csv", code, v.Name+".xlsx"), kline)
 						return nil
 					}, retry)
 					logs.PrintErr(err)
@@ -158,10 +157,10 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 
 	//进行压缩操作,250ms
 	s.SetHint(plan.CompressStart().String())
-	logs.Debug(ZipPath)
-	oss.NewDir(ZipPath)
-	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(ZipPath, "csv.zip"))
-	logs.PrintErr(err)
+	//logs.Debug(ZipPath)
+	//oss.NewDir(ZipPath)
+	//err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(ZipPath, "csv.zip"))
+	//logs.PrintErr(err)
 	s.SetHint(plan.CompressEnd().String())
 
 	return nil
@@ -179,7 +178,8 @@ func toCsv(c *tdx.Client, filename string, kline model.Klines) error {
 		})
 	}
 
-	buf, err := csv.Export(data)
+	buf, err := excel.ToExcel(map[string][][]any{"sheet1": data})
+	//buf, err := csv.Export(data)
 	if err != nil {
 		return err
 	}
