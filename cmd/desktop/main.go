@@ -143,7 +143,7 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 						if err != nil {
 							return err
 						}
-						toCsv(c, filepath.Join(c.Cfg.Database, "csv", code, v.Name+".csv"), kline)
+						toCsv(c, filepath.Join(c.Cfg.Database, "csv", v.Name, code+".csv"), kline)
 						return nil
 					}, retry)
 					logs.PrintErr(err)
@@ -163,8 +163,10 @@ func update(s *tray.Stray, c *tdx.Client, codes []string, limit int, retries ...
 	s.SetHint(plan.CompressStart().String())
 	logs.Debug(ZipPath)
 	oss.NewDir(ZipPath)
-	err := zip.Encode(filepath.Join(c.Cfg.Database, "csv")+"/", filepath.Join(ZipPath, "csv.zip"))
-	logs.PrintErr(err)
+	for _, v := range (&tdx.DB{}).AllKlineHandler() {
+		err := zip.Encode(filepath.Join(c.Cfg.Database, "csv", v.Name)+"/", filepath.Join(ZipPath, v.Name+".zip"))
+		logs.PrintErr(err)
+	}
 	s.SetHint(plan.CompressEnd().String())
 
 	return nil
@@ -190,11 +192,6 @@ func export(c *tdx.Client, codes []string, retries ...int) error {
 		})
 	}
 	return nil
-}
-
-// 导入
-func _import() {
-
 }
 
 func toCsv(c *tdx.Client, filename string, kline model.Klines) error {
