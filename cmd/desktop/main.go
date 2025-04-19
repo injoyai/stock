@@ -58,7 +58,7 @@ func main() {
 	tray.Run(
 		func(s *tray.Stray) {
 			s.SetIco(IcoStock)
-			s.AddMenu().SetName("版本: v0.2.11").Disable()
+			s.AddMenu().SetName("版本: v0.2.12").Disable()
 			last := s.AddMenu().SetName("上次:").Disable()
 			next := s.AddMenu().SetName("下次:").Disable()
 			_export := s.AddMenu().SetName("导出")
